@@ -1,0 +1,1057 @@
+---
+title: "Data types and functions"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Companion videos
+
+- [More on atomic vectors](https://warpwire.duke.edu/w/vTwEAA/)
+- [Generic vectors](https://warpwire.duke.edu/w/vzwEAA/)
+- [Introduction to functions](https://warpwire.duke.edu/w/wTwEAA/)
+- [More on functions](https://warpwire.duke.edu/w/wzwEAA/)
+
+.small-text[
+Videos were created for STA 323 & 523 - Summer 2020
+]
+
+Additional resources
+
+- [Section 3.5](https://adv-r.hadley.nz/vectors-chap.html#lists) Advanced R
+- [Section 3.7](https://adv-r.hadley.nz/vectors-chap.html#null) Advanced R
+- [Chapter 6](https://adv-r.hadley.nz/functions.html) Advanced R
+
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## Vectors
+
+The fundamental building block of data in R is a vector (collections of related 
+values, objects, other data structures, etc).
+
+
+R has two types of vectors:
+
+* **atomic** vectors 
+
+    - homogeneous collections of the *same* type (e.g. all logical values, all 
+      numbers, or all character strings).
+
+* **generic** vectors
+  
+    - heterogeneous collections of *any* type of R object, even other lists 
+      (meaning they can have a hierarchical/tree-like structure).
+    
+<br><br>
+
+I will use the term component or element when referring to a value
+inside a vector.
+
+---
+
+## Atomic vectors
+
+R has six atomic vector types: 
+  
+<br/>
+  
+.center[
+`logical`, `integer`, `double`,  `character`, `complex`, `raw`      
+]
+
+In this course we will mostly work with the first four. You will rarely work
+with the last two types - complex and raw.
+
+---
+
+## Conditional control flow
+
+Conditional (choice) control flow is governed by `if` and `switch()`.
+
+.pull-left[
+```{r eval=FALSE}
+if (condition) {
+  # code to run
+  # when condition is
+  # TRUE
+}
+```
+]
+
+.pull-right[
+```{r eval=FALSE}
+if (TRUE) {
+  print("The condition must have been true!")
+}
+```
+]
+
+---
+
+## `if` is not vectorized
+
+To remedy this potential problem of a non-vectorized `if`, you can
+
+1. try to collapse the logical vector to a vector of length 1
+
+    - `any()`
+    - `all()`
+
+2. use a vectorized conditional function such as `ifelse()` or
+   `dplyr::case_when()`.
+
+---
+
+## Loop types
+
+R supports three types of loops: `for`, `while`, and `repeat`.
+
+```{r eval=FALSE}
+for (item in vector) {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+```{r eval=FALSE}
+while (we_have_a_true_condition) {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+```{r eval=FALSE}
+repeat {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+In the `repeat` loop we will need a `break` statement to end iteration.
+
+---
+
+## Concatenation
+
+Atomic vectors can be constructed using the concatenate, `c()`, function.
+
+```{r}
+c(1,2,3)
+```
+
+
+```{r}
+c("Hello", "World!")
+```
+
+
+```{r}
+c(1,c(2, c(3)))
+```
+
+<br/><br/>
+
+Atomic vectors are always flat.
+
+---
+
+class: inverse, center, middle
+
+# More on atomic vectors
+
+---
+
+## Atomic vectors
+
+
+  `typeof()`  |  `mode()`     |  `storage.mode()`
+:-----------|:------------|:----------------
+logical     |  logical    |  logical
+double      |  numeric    |  double
+integer     |  numeric    |  integer
+character   |  character  |  character
+complex     |  complex    |  complex
+raw         |  raw        |  raw
+
+<br>
+
+- Function `typeof()` can handle any object
+
+- Functions `mode()` and `storage.mode()` allow for assignment
+
+---
+
+## Examples of type and mode
+
+.pull-left[
+```{r}
+typeof(c(T, F, T))
+typeof(7)
+typeof(7L)
+typeof("S")
+typeof("Shark")
+```
+]
+
+.pull-right[
+```{r}
+mode(c(T, F, T))
+mode(7)
+mode(7L)
+mode("S")
+mode("Shark")
+```
+]
+
+---
+
+## Atomic vector type observations
+
+- Numeric means an object of type integer or double.
+
+- Integers must be followed by an L, except if you use operator `:`.
+    ```{r results='hold'}
+    x <- 1:100
+    y <- as.numeric(1:100)
+    c(typeof(x), typeof(y))
+    ```
+    ```{r results='hold'}
+    object.size(x)
+    object.size(y)
+    ```
+
+- There is no "string" type or mode, only "character".
+
+---
+
+## Logical predicates
+
+The `is.*(x)` family of functions performs a logical test as to whether
+`x` is of type `*`. For example,
+
+.pull-left[
+```{r}
+is.integer(T)
+is.double(pi)
+is.character("abc")
+is.numeric(1L)
+```
+]
+
+.pull-right[
+```{r}
+is.integer(pi)
+is.double(pi)
+is.integer(1:10)
+is.numeric(1)
+```
+]
+
+Function `is.numeric(x)` returns `TRUE` when `x` is integer or double.
+
+---
+
+## Coercion
+
+Previously, we looked at R's coercion hierarchy:
+
+.center[
+`character` $\rightarrow$ `double` $\rightarrow$ `integer` $\rightarrow$ `logical`
+]
+
+Coercion can happen implicitly through functions and operations; it can
+occur explicitly via the `as.*()` family of functions.
+
+---
+
+## Implicit coercion
+
+.pull-left[
+
+```{r}
+x <- c(T, T, F, F, F)
+mean(x)
+
+c(1L, 1.0, "one")
+
+0 >= "0"
+(0 == "0") != "TRUE"
+```
+]
+
+.pull-right[
+
+```{r}
+1 & TRUE & 5.0 & pi
+0 == FALSE
+(0 | 1) & 0
+```
+]
+
+---
+
+## Explicit coercion
+
+.pull-left[
+```{r}
+as.logical(sqrt(2))
+as.character(5L)
+as.integer("4")
+as.integer("four")
+```
+]
+
+.pull-right[
+```{r}
+as.numeric(FALSE)
+as.double(10L)
+as.complex(5.4)
+as.logical(as.character(3))
+```
+]
+
+---
+
+## Reserved words: `NA`, `NaN`, `Inf`, `-Inf`
+
+- `NA` is a logical constant of length 1 which serves a missing value indicator.
+
+- `NaN` stands for not a number.
+
+- `Inf`, `-Inf` are positive and negative infinity, respectively.
+
+---
+
+## Missing values
+
+- `NA` can be coerced to any other vector type except raw.
+
+.pull-left[
+```{r}
+typeof(NA)
+typeof(NA+1)
+typeof(NA+1L)
+```
+]
+
+.pull-right[
+```{r}
+typeof(NA_character_)
+typeof(NA_real_)
+typeof(NA_integer_)
+```
+]
+
+---
+
+## `NA` in, `NA` out (most of the time)
+
+```{r}
+x <- c(-4, 0, NA, 33, 1 / 9)
+mean(x)
+
+NA ^ 4
+
+log(NA)
+```
+
+--
+
+Some of the `base` R functions have an argument `na.rm` to remove `NA` values in
+the calculation.
+
+```{r}
+mean(x, na.rm = TRUE)
+```
+
+---
+
+## Special non-infectious `NA` cases
+
+```{r}
+NA ^ 0
+
+NA | TRUE
+
+NA & FALSE
+```
+
+--
+
+<br>
+
+Why does `NA / Inf` result in `NA`?
+
+---
+
+## Testing for `NA`
+
+Use function `is.na()` (vectorized) to test for `NA` values.
+
+.pull-left[
+```{r}
+is.na(NA)
+is.na(1)
+is.na(c(1,2,3,NA))
+```
+]
+
+.pull-right[
+```{r}
+any(is.na(c(1,2,3,NA)))
+all(is.na(c(1,2,3,NA)))
+```
+]
+
+---
+
+## `NaN`, `Inf`, and `-Inf`
+
+.pull-left[
+```{r}
+-5 / 0
+0 / 0
+1/0 + 1/0
+```
+]
+
+.pull-right[
+```{r}
+1/0 - 1/0
+NaN / NA
+NaN * NA
+```
+]
+
+- Functions `is.finite()` and `is.nan()` test for `Inf`, `-Inf`, and `NaN`,
+  respectively.
+
+- Coercion is possible with the `as.*()` family of functions. Be careful with
+  these; they may not always work as you expect.
+
+.small-text[
+```{r}
+as.integer(Inf)
+```
+]
+
+???
+
+- Note that current implementations of R use 32-bit integers for integer vectors, 
+  so the range of representable integers is restricted to about +/-2*10^9: 
+  doubles can hold much larger integers exactly.
+
+- Computations involving `NaN` will return `NaN` or perhaps `NA`: which of those 
+  two is not guaranteed and may depend on the R platform
+  
+---
+
+## Atomic vector properties
+
+- Homogeneous
+
+- Elements can have names
+
+- Elements can be indexed by name or position
+
+- Matrices, arrays, factors, and date-times are built on top of atomic
+  vectors by adding attributes.
+  
+.pull-left[
+```{r}
+x <- c(-3:2)
+attributes(x)
+x
+```
+]
+.pull-right[
+```{r}
+attr(x, which = "dim") <- c(2, 3)
+attributes(x)
+x
+```
+]
+  
+
+---
+
+## Exercises
+
+1. What is the type of each vector below? Check your answer in R.
+    ```{r eval=FALSE}
+    c(4L, 16, 0)
+    c(NaN, NA, -Inf)
+    c(NA, TRUE, FALSE, "TRUE")
+    c(pi, NaN, NA)
+    ```
+<br>
+2. Write a conditional statement that prints "Can't proceed NA or NaN present!"
+   if a vector contains `NA` or `NaN`. Test your code with vectors `x` and `y`
+   below.
+    ```{r}
+    x <- NA
+    y <- c(1:5, NaN, NA, sqrt(3))
+    ```
+
+???
+
+## Solutions
+
+1.
+
+.solution[
+```{r}
+typeof(c(4L, 16, 0))
+typeof(c(NaN, NA, -Inf))
+typeof(c(NA, TRUE, FALSE, "TRUE"))
+typeof(c(pi, NaN, NA))
+```
+]
+
+2.
+
+.solution[
+```{r}
+x <- NA
+y <- c(1:5, NaN, NA, sqrt(3))
+if (any(is.na(x))) {print("Can't proceed NA or NaN present!")}
+if (any(is.na(y))) {print("Can't proceed NA or NaN present!")}
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Generic vectors
+
+---
+
+## Lists
+
+Lists are generic vectors, in that they are 1 dimensional (i.e. have a length) 
+and can contain any type of R object. They are heterogeneous structures.
+
+```{r}
+list("A", c(TRUE,FALSE), (1:4)/2, function(x) x^2)
+```
+
+---
+
+## Structure
+
+For complex objects, function `str()` will display the structure in a compact
+form.
+
+```{r}
+str(list("A", c(TRUE,FALSE), (1:4)/2, function(x) x^2))
+```
+
+---
+
+## Coercion and testing
+
+Lists can be complex structures and even include other lists.
+
+```{r eval=FALSE}
+x <- list("a", list("b", c("c", "d"), list(1:5)))
+```
+
+```{r eval=FALSE}
+> str(x)
+List of 2     #<<
+ $ : chr "a"  #<<
+ $ :List of 3 #<<
+  ..$ : chr "b"
+  ..$ : chr [1:2] "c" "d"
+  ..$ :List of 1
+  .. ..$ : int [1:5] 1 2 3 4 5
+```
+
+---
+
+## Coercion and testing
+
+Lists can be complex structures and even include other lists.
+
+```{r eval=FALSE}
+x <- list("a", list("b", c("c", "d"), list(1:5)))
+```
+
+```{r eval=FALSE}
+> str(x)
+List of 2     
+$ : chr "a"
+ $ :List of 3              #<<
+  ..$ : chr "b"            #<<
+  ..$ : chr [1:2] "c" "d"  #<<
+  ..$ :List of 1           #<<
+  .. ..$ : int [1:5] 1 2 3 4 5
+```
+
+---
+
+## Coercion and testing
+
+Lists can be complex structures and even include other lists.
+
+```{r}
+x <- list("a", list("b", c("c", "d"), list(1:5)))
+```
+
+```{r eval=FALSE}
+> str(x)
+List of 2     
+$ : chr "a"
+$ :List of 3              
+  ..$ : chr "b"            
+  ..$ : chr [1:2] "c" "d"  
+  ..$ :List of 1           #<<
+  .. ..$ : int [1:5] 1 2 3 4 5  #<<
+```
+
+--
+
+```{r}
+typeof(x)
+```
+
+You can test for a list and coerce an object to a list with `is.list()` and
+`as.list()`, respectively.
+
+---
+
+## Flattening
+
+Function `unlist()` will turn a list into an atomic vector. Keep R's coercion
+hierarchy in mind if you use this function.
+
+```{r}
+y <- list(1:5, pi, c(T, F, T, T))
+unlist(y)
+```
+<br>
+--
+
+```{r}
+x <- list("a", list("b", c("c", "d"), list(1:5)))
+unlist(x)
+```
+
+---
+
+## List properties
+
+- Lists are heterogeneous.
+
+- Lists elements can have names.
+    ```{r}
+    list(stocks = c("AAPL", "BA", "PFE", "C"), 
+         eps    = c(1.1, .9, 2.3, .54),
+         index  = c("DJIA", "NASDAQ", "SP500"))
+    ```
+    
+- Lists can be indexed by name or position.
+
+- Lists let you extract sublists or a specific object.
+
+---
+
+## Exercise
+
+Create a list based on the JSON product order data below.
+```
+[
+ {
+  "id": {
+    "oid": "5968dd23fc13ae04d9000001"
+  },
+  "product_name": "sildenafil citrate",
+  "supplier": "Wisozk Inc",
+  "quantity": 261,
+  "unit_cost": "$10.47"
+ },
+ 
+ {
+  "id": {
+    "oid": "5968dd23fc13ae04d9000002"
+  },
+  "product_name": "Mountain Juniperus ashei",
+  "supplier": "Keebler-Hilpert",
+  "quantity": 292,
+  "unit_cost": "$8.74"
+ }
+]
+```
+
+???
+
+## Solution
+
+.solution[
+```{r eval=FALSE}
+list(
+  list(
+    id = list(oid = "5968dd23fc13ae04d9000001"),
+    product_name = "sildenafil citrate",
+    supplier = "Wisozk Inc",
+    quantity = 261,
+    unit_cost = "$10.47"
+  ),
+  list(
+    id = list(oid = "5968dd23fc13ae04d9000002"),
+    product_name = "Mountain Juniperus ashei",
+    supplier = "Keebler-Hilpert",
+    quantity = 292,
+    unit_cost = "$8.74"
+  )
+)
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Functions
+
+---
+
+## Fundamentals
+
+A function is comprised of arguments (formals), body, and environment. The first
+two will be our main focus as we use and develop these objects.
+
+```{r, include=FALSE}
+f <- function(x, y, z) {
+  # combine words
+  paste(x, y, z, sep = " ")
+}
+
+f(x = "just", y = "three", z = "words")
+```
+
+.pull-left[
+```{r}
+f <- function(x, y, z) {
+  
+  # combine words
+  paste(x, y, z, sep = " ")
+  
+}
+
+f(x = "just", y = "three", 
+  z = "words")
+```
+]
+.pull-right[
+```{r}
+formals(f)
+body(f)
+environment(f)
+```
+]
+
+---
+
+## Exiting
+
+Most functions end by returning a value (implicitly or explicitly) or in error.
+
+**Implicit return**
+
+```{r}
+centers <- function(x) {
+  
+  c(mean(x), median(x))
+  
+}
+```
+
+**Explicit return**
+
+```{r}
+standardize <- function(x) {
+  
+  stopifnot(length(x) > 1)
+  x_stand <- (x - mean(x)) / sd(x)
+  return(x_stand)
+  
+}
+```
+
+R functions can return any object.
+
+---
+
+## Calls
+
+Function calls involve the function's name and, at a minimum, values to
+its required arguments. Arguments can be given values by
+
+1. position
+    ```{r}
+    z <- 1:30
+    mean(z, .3, FALSE)
+    ```
+--
+2. name
+    ```{r}
+    mean(x = z, trim = .3, na.rm = FALSE)
+    ```
+--
+3. partial name matching
+    ```{r}
+    mean(x = z, na = FALSE, t = .3)
+    ```
+
+---
+
+## Call style
+
+The best choice is
+
+```{r}
+mean(z, trim = .3)
+```
+
+Leave the argument's name out for the commonly used (required) arguments, and 
+always specify the argument names for the optional arguments.
+
+---
+
+## Scope
+
+R uses lexical scoping. This provides a lot of flexibility, but it can also
+be problematic if a user is not careful. Let's see if we can get an idea of
+the scoping rules.
+
+```{r, eval=FALSE}
+y <- 1
+
+f <- function(x){
+  
+  y <- x ^ 2
+  return(y)
+  
+}
+
+f(x = 3) #<<
+y #<<
+```
+
+What is the result of `f(x = 3)` and `y`?
+
+???
+
+.solution[
+```{r}
+y <- 1
+
+f <- function(x){
+  
+  y <- x ^ 2
+  return(y)
+  
+}
+
+f(x = 3) 
+y 
+```
+]
+
+---
+
+```{r eval=FALSE}
+y <- 1
+z <- 2
+
+f <- function(x){
+  
+  y <- x ^ 2
+  
+  g <- function() {
+    
+    c(x, y, z)
+    
+  } # closes body of g()
+  
+  g()
+  
+} # closes body of f()
+
+
+f(x = 3) #<<
+c(y, z)  #<<
+```
+
+What is the result of `f(x = 3)` and `c(y, z)`?
+
+--
+
+R first searches for a value associated with a name in the current environment.
+If the object is not found the search is widened to the next higher scope.
+
+???
+
+.solution[
+
+```{r}
+y <- 1
+z <- 2
+
+f <- function(x){
+  
+  y <- x ^ 2
+  
+  g <- function() {
+    
+    c(x, y, z)
+    
+  } # closes body of g()
+  
+  g()
+  
+} # closes body of f()
+
+
+f(x = 3)
+c(y, z) 
+```
+ 
+]
+
+---
+
+## Lazy evaluation
+
+.pull-left[
+Arguments to R functions are not evaluated until needed.
+```{r, error=TRUE}
+f <- function(a, b, x) {
+  print(a)
+  print(b ^ 2)
+  0 * x
+}
+
+f(5, 6)
+```
+
+]
+
+.middle.pull-right[
+![](images/sloth.png)
+]
+
+---
+
+## Four function forms
+
+|     Form    |          Description         |         Example(s)        |
+|:-----------:|:----------------------------:|:-------------------------:|
+| Prefix      | name comes before arguments  | `log(x, base = exp(1))`   |
+| Infix       | name between arguments       | `+`, `%>%`, `%/%`         |
+| Replacement | replace values by assignment | `names(x) <- c("a", "b")` |
+| Special     | all others not defined above | `[[`, `for`, `break`, `(` |
+
+---
+
+## Help
+
+To get help on any function, type `?fcn_name` in your console, where `fcn_name`
+is the function's name. For infix, replacement, and special functions you
+will need to surround the function with backticks.
+
+```{r}
+?sd
+```
+
+```{r}
+?`for`
+```
+
+```{r}
+?`names<-`
+```
+
+```{r}
+?`%/%`
+```
+
+<br/><br/>
+
+Using function `help()` is an alternative to `?`.
+
+---
+
+## Best practices
+
+- Write a function when you have copied code more than twice.
+
+- Try to use a verb for your function's name.
+
+- Keep argument names short but descriptive.
+
+- Add code comments to explain the "why" of your code.
+
+- Link a family of functions with a common prefix: `pnorm()`, `pbinom()`, 
+  `ppois()`.
+  
+- Keep data arguments first, then other required arguments, then followed by 
+  default arguments. The `...` argument can be placed last.
+
+---
+
+class: middle
+
+<h4><i>
+To understand computations in R, two slogans are helpful:
+<br>
+- Everything that exists is an object.
+- Everything that happens is a function call.
+<br><br><br>
+
+
+John Chambers
+</i>
+
+
+---
+
+## References
+
+- Grolemund, G., & Wickham, H. (2019). R for Data Science. https://r4ds.had.co.nz/
+
+- Wickham, H. (2019). Advanced R. https://adv-r.hadley.nz/
+
+

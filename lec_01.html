@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Fundamentals of R</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Fundamentals of R
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Companion videos
+
+- [RStudio Tour](https://warpwire.duke.edu/w/4zEEAA/)
+- [Vectors](https://warpwire.duke.edu/w/rzEEAA/)
+- [Operators, vectorization, and length coercion](https://warpwire.duke.edu/w/rTEEAA/)
+- [Control flow](https://warpwire.duke.edu/w/pzEEAA/)
+- [Error action](https://warpwire.duke.edu/w/qzEEAA/)
+- [Loops](https://warpwire.duke.edu/w/sTEEAA/)
+
+.small-text[
+Videos were created for STA 323 &amp; 523 - Summer 2020
+]
+
+Additional resources
+
+- [Google’s R Style Guide](https://google.github.io/styleguide/Rguide.html)
+- [Hadley's R Style Guide](http://r-pkgs.had.co.nz/style.html)
+- [Sections 3.1 – 3.2](https://adv-r.hadley.nz/vectors-chap.html) Advanced R
+- [Chapter 5](https://adv-r.hadley.nz/control-flow.html) Advanced R
+
+---
+
+class: inverse, center, middle
+
+# Vectors
+
+---
+
+## Vectors
+
+The fundamental building block of data in R is a vector (collections of related 
+values, objects, other data structures, etc).
+
+--
+
+R has two types of vectors:
+
+* **atomic** vectors 
+
+    - homogeneous collections of the *same* type (e.g. all logical values, 
+      all numbers, or all character strings).
+
+* **generic** vectors
+  
+    - heterogeneous collections of *any* type of R object, even other lists 
+      (meaning they can have a hierarchical/tree-like structure).
+    
+&lt;br&gt;&lt;br&gt;
+
+I will use the term component or element when referring to a value
+inside a vector.
+
+---
+
+## Vector interrelationships
+
+.middle.center[
+
+&lt;img src="images/vector_types.png" height="400px"&gt;
+
+]
+
+.small-text[
+*Source*: https://r4ds.had.co.nz/vectors.html
+]
+
+---
+
+## Atomic vectors
+
+R has six atomic vector types: 
+  
+.center[
+`logical`, `integer`, `double`,  `character`, `complex`, `raw`      
+]
+
+In this course we will mostly work with the first four. You will rarely work
+with the last two types - complex and raw.
+
+
+```r
+x &lt;- c(T, F, TRUE, FALSE)
+typeof(x)
+```
+
+```
+#&gt; [1] "logical"
+```
+
+```r
+y &lt;- c("a", "few", "more", "slides")
+typeof(y)
+```
+
+```
+#&gt; [1] "character"
+```
+
+---
+
+## Coercion hierarchy
+
+If you try to combine components of different types into a single atomic vector, 
+R will try to coerce all elements so they can be represented as the simplest 
+type.
+
+.center[
+`character` `\(\rightarrow\)` `double` `\(\rightarrow\)` `integer` `\(\rightarrow\)` `logical`
+]
+
+
+```r
+x &lt;- c(T, 5, F, 0, 1)
+y &lt;- c("a", 1, T)
+z &lt;- c(3.0, 4L, 0L)
+```
+
+--
+.pull-left[
+
+```r
+x
+```
+
+```
+#&gt; [1] 1 5 0 0 1
+```
+
+```r
+y
+```
+
+```
+#&gt; [1] "a"    "1"    "TRUE"
+```
+
+```r
+z
+```
+
+```
+#&gt; [1] 3 4 0
+```
+]
+
+.pull-right[
+
+```r
+typeof(x)
+```
+
+```
+#&gt; [1] "double"
+```
+
+```r
+typeof(y)
+```
+
+```
+#&gt; [1] "character"
+```
+
+```r
+typeof(z)
+```
+
+```
+#&gt; [1] "double"
+```
+]
+
+---
+
+## Concatenation
+
+One way to construct atomic vectors is with function `c()`.
+
+
+```r
+c(1, 0, 1, 1, 6)
+```
+
+```
+#&gt; [1] 1 0 1 1 6
+```
+
+```r
+c(c(3, 4), c(10, TRUE))
+```
+
+```
+#&gt; [1]  3  4 10  1
+```
+
+```r
+c(pi)
+```
+
+```
+#&gt; [1] 3.141593
+```
+
+---
+
+class: inverse, center, middle
+
+# Operators, vectorization, and length coercion
+
+---
+
+
+## Logical (Boolean) operators
+
+|  Operator                     |  Operation    |  Vectorized? 
+|:-----------------------------:|:-------------:|:------------:
+| &lt;code&gt;x &amp;#124; y&lt;/code&gt;       |  or           |   Yes        
+| `x &amp; y`                       |  and          |   Yes        
+| `!x`                          |  not          |   Yes        
+| &lt;code&gt;x &amp;#124;&amp;#124; y&lt;/code&gt; |  or           |   No         
+| `x &amp;&amp; y`                      |  and          |   No         
+|`xor(x,y)`                     |  exclusive or |   Yes    
+
+&lt;br&gt;&lt;br&gt;
+
+--
+
+What do we mean if we say a function or operation is vectorized?
+
+---
+
+## Boolean examples
+
+
+```r
+x &lt;- c(T, F, T, T)
+y &lt;- c(F, F, T, F)
+```
+
+--
+
+.pull-left[
+
+```r
+!x
+```
+
+```
+#&gt; [1] FALSE  TRUE FALSE FALSE
+```
+
+```r
+x | y
+```
+
+```
+#&gt; [1]  TRUE FALSE  TRUE  TRUE
+```
+
+```r
+x || y
+```
+
+```
+#&gt; [1] TRUE
+```
+]
+
+--
+
+.pull-right[
+
+```r
+x &amp; y
+```
+
+```
+#&gt; [1] FALSE FALSE  TRUE FALSE
+```
+
+```r
+x &amp;&amp; y
+```
+
+```
+#&gt; [1] FALSE
+```
+
+```r
+xor(x, y)
+```
+
+```
+#&gt; [1]  TRUE FALSE FALSE  TRUE
+```
+]
+
+---
+
+## Comparison operators
+
+|  Operator  |  Comparison                |  Vectorized?
+|:----------:|:--------------------------:|:----------------:
+| `x &lt; y`    |  less than                 |  Yes
+| `x &gt; y`    |  greater than              |  Yes
+| `x &lt;= y`   |  less than or equal to     |  Yes
+| `x &gt;= y`   |  greater than or equal to  |  Yes
+| `x != y`   |  not equal to              |  Yes
+| `x == y`   |  equal to                  |  Yes
+| `x %in% y` |  contains                  |  Yes (over `x`)
+
+---
+
+## Comparison examples
+
+
+```r
+x &lt;- c(4, 10, -5)
+y &lt;- c(0, 51, 9 / 5)
+z &lt;- c("four", "for", "4")
+```
+
+--
+
+.pull-left[
+
+```r
+x &gt; y
+```
+
+```
+#&gt; [1]  TRUE FALSE FALSE
+```
+
+```r
+x != y
+```
+
+```
+#&gt; [1] TRUE TRUE TRUE
+```
+]
+
+--
+
+.pull-right[
+
+```r
+x == z
+```
+
+```
+#&gt; [1] FALSE FALSE FALSE
+```
+
+```r
+x %in% z
+```
+
+```
+#&gt; [1]  TRUE FALSE FALSE
+```
+]
+
+---
+
+## What else is vectorized?
+
+- Most of the mathematical operators
+
+- Many functions in `base` R and created by user's in packages
+
+
+```r
+a &lt;- c(0, -3, sqrt(75))
+b &lt;- c(1, 3, 2)
+```
+
+
+.pull-left[
+
+```r
+a + b
+```
+
+```
+#&gt; [1]  1.00000  0.00000 10.66025
+```
+
+```r
+a ^ b
+```
+
+```
+#&gt; [1]   0 -27  75
+```
+]
+
+.pull-right[
+
+```r
+rnorm(n = 3, mean = a, sd = b)
+```
+
+```
+#&gt; [1] -0.6483697  1.6219890  6.7336622
+```
+
+```r
+exp(a / b)
+```
+
+```
+#&gt; [1]  1.0000000  0.3678794 75.9539335
+```
+]
+
+---
+
+## Length coercion (vector recycling)
+
+The shorter of two atomic vectors in an operation is recycled until it is the 
+same length as the longer atomic vector.
+
+
+```r
+x &lt;- c(2, 4, 6)
+y &lt;- c(1, 1, 1, 2, 2)
+```
+
+.small-text[
+
+```r
+x &gt; y
+```
+
+```
+#&gt; [1]  TRUE  TRUE  TRUE FALSE  TRUE
+```
+
+```r
+x == y
+```
+
+```
+#&gt; [1] FALSE FALSE FALSE  TRUE FALSE
+```
+
+```r
+10 / x
+```
+
+```
+#&gt; [1] 5.000000 2.500000 1.666667
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Control flow
+
+---
+
+## Conditional control flow
+
+Conditional (choice) control flow is governed by `if` and `switch()`.
+
+.pull-left[
+
+```r
+if (condition) {
+  # code to run
+  # when condition is
+  # TRUE
+}
+```
+]
+
+.pull-right[
+
+```r
+if (TRUE) {
+  print("The condition must have been true!")
+}
+```
+]
+
+
+---
+
+## `if` examples
+
+
+```r
+if (1 &gt; 0) {
+  print("Yes, 1 is greater than 0.")
+}
+```
+
+```
+#&gt; [1] "Yes, 1 is greater than 0."
+```
+
+--
+
+
+```r
+x &lt;- c(1, 2, 3, 4)
+if (3 %in% x) {
+  print("Yes, 3 is in x.")
+}
+```
+
+```
+#&gt; [1] "Yes, 3 is in x."
+```
+
+--
+
+
+```r
+if (-6) {
+  print("Other types are coerced to logical if possible.")
+}
+```
+
+```
+#&gt; [1] "Other types are coerced to logical if possible."
+```
+
+---
+
+## More `if` examples
+
+
+```r
+if (c(F, T, T)) {
+  print("How many logical values can if handle?")
+}
+```
+
+```
+#&gt; Warning in if (c(F, T, T)) {: the condition has length &gt; 1 and only the first
+#&gt; element will be used
+```
+
+--
+
+
+```r
+x &lt;- c(1, 2, 3, 4)
+if (x %in% 3) {
+  print("This works?")
+}
+```
+
+
+```r
+if (c(1, 0, 1)) {
+  print("Other types are coerced to logical if possible.")
+}
+```
+
+```
+#&gt; [1] "Other types are coerced to logical if possible."
+```
+
+&lt;br/&gt;
+
+.small-text[
+I suppressed warnings in the last two examples.
+]
+
+---
+
+## `if` is not vectorized
+
+To remedy this potential problem of a non-vectorized `if`, you can
+
+1. try to collapse a logical vector of length greater than 1
+   to a logical vector of length 1 with functions
+
+    - `any()`
+    - `all()`
+
+2. use a vectorized conditional function such as `ifelse()` or
+   `dplyr::case_when()`.
+
+---
+
+## Functions `any()` and `all()`
+
+
+```r
+x &lt;- c(-5, 0, 5, 10, 15)
+any(x &gt;= 5)
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+all(x &gt;= 5)
+```
+
+```
+#&gt; [1] FALSE
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+Functions `any()` and `all()` require a logical vector as input.
+
+---
+
+## Vectorized `if`
+
+
+```r
+z &lt;- c(-4:-1, 1:3)
+z
+```
+
+```
+#&gt; [1] -4 -3 -2 -1  1  2  3
+```
+
+```r
+ifelse(test = z &lt; 0, yes = "neg", no = "pos")
+```
+
+```
+#&gt; [1] "neg" "neg" "neg" "neg" "pos" "pos" "pos"
+```
+
+&lt;br&gt;
+--
+
+
+```r
+set.seed(532)
+x &lt;- rnorm(n = 4, mean = 0, sd = 1)
+x
+```
+
+```
+#&gt; [1]  3.105059 -1.329432 -1.466140 -0.345289
+```
+
+```r
+ifelse(test = abs(x) &gt; 3, yes = "outlier", no = "no outlier")
+```
+
+```
+#&gt; [1] "outlier"    "no outlier" "no outlier" "no outlier"
+```
+
+---
+
+## Nested conditionals
+
+.pull-left[
+
+```r
+if (condition_one) {
+  ##
+  ## Code to run
+  ##
+} else if (condition_two) {
+  ##
+  ## Code to run
+  ##
+} else {
+  ##
+  ## Code to run
+  ##
+}
+```
+]
+
+.pull-right[
+
+```r
+x &lt;-  0
+if (x &lt; 0) {
+  "Negative"
+} else if (x &gt; 0) {
+  "Positive"
+} else {
+  "Zero"
+}
+```
+
+```
+#&gt; [1] "Zero"
+```
+]
+
+---
+
+class: inverse, middle, center
+
+# Error action
+
+---
+
+## Execute error action
+
+Functions `stop()` and `stopifnot()` execute an error action. These are useful
+if you want to validate inputs or function arguments.
+
+
+```r
+x &lt;- -1
+if (x &lt; 0) {
+  stop("Negative numbers not allowed!")
+}
+```
+
+```
+#&gt; Error in eval(expr, envir, enclos): Negative numbers not allowed!
+```
+
+&lt;br&gt;
+--
+
+
+```r
+x &lt;- c(3, 9, 28)
+stopifnot(any(x &gt;= 0), all(x %% 3 == 0))
+```
+
+```
+#&gt; Error: all(x%%3 == 0) is not TRUE
+```
+
+If any of the expressions in function `stopifnot()` are not `TRUE`, then
+function `stop()` is called and an error message is shown.
+
+
+---
+
+## Exercises
+
+1. What does each of the following return? Run the code to check your answer.
+    
+    ```r
+    if (1 == "1") "coercion  works" else "no coercion "
+    
+    ifelse(5 &gt; c(1, 10, 2), "hello", "olleh")
+    ```
+&lt;br&gt;
+
+2. Consider two vectors, `x` and `y`, each of length one. Write a set of
+   conditionals that satisfy the following.
+   
+    - If `x` is positive and `y` is negative or `y` is positive and `x` is
+      negative, print "knits".
+    - If `x` divided by `y` is positive, print "stink".
+    - Stop execution if `x` or `y` are zero.
+    
+  Test your code with various `x` and `y` values. Where did you
+  place the stop execution code?
+  
+???
+
+## Solutions
+
+1.
+.solution[
+
+```r
+if (1 == "1") "coercion  works" else "no coercion "
+```
+
+```
+#&gt; [1] "coercion  works"
+```
+
+```r
+ifelse(5 &gt; c(1, 10, 2), "hello", "olleh")
+```
+
+```
+#&gt; [1] "hello" "olleh" "hello"
+```
+]
+2.
+.solution[
+
+```r
+x &lt;- 4
+y &lt;- -10
+
+if (x == 0 | y == 0) {
+  stop("One of x or y is 0!")
+} else if (x / y &gt; 0) {
+  print("stink")
+} else {
+  print("knits")
+}
+```
+
+```
+#&gt; [1] "knits"
+```
+]
+
+---
+
+class: inverse, middle, center
+
+# Loops
+
+---
+
+## Loop types
+
+R supports three types of loops: `for`, `while`, and `repeat`.
+
+
+```r
+for (item in vector) {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+
+```r
+while (we_have_a_true_condition) {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+
+```r
+repeat {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+In the `repeat` loop we will need a `break` statement to end iteration.
+
+---
+
+## `for` loop
+
+A `for` loop allows you to iterate code over items in a vector.
+
+
+```r
+k &lt;- 0
+for (i in c(2, 4, 6, 8)) {
+  print(i ^ 2)
+  k &lt;- k + i ^ 2
+}
+```
+
+```
+#&gt; [1] 4
+#&gt; [1] 16
+#&gt; [1] 36
+#&gt; [1] 64
+```
+
+--
+
+
+```r
+k
+```
+
+```
+#&gt; [1] 120
+```
+
+--
+
+
+```r
+for (i in c(2, 4, 6, 8)) {
+  i ^ 2
+}
+```
+
+*Automatic printing is turned off inside loops.*
+
+???
+.tiny[
+
+```r
+i &lt;- 10
+for (i in 1:3) {
+  print("Today is Tuesday.")
+}
+```
+
+```
+#&gt; [1] "Today is Tuesday."
+#&gt; [1] "Today is Tuesday."
+#&gt; [1] "Today is Tuesday."
+```
+
+```r
+i
+```
+
+```
+#&gt; [1] 3
+```
+]
+
+Variable `i` is overwritten when `for` is executed. Thus, `i` is assigned
+to the current environment. Convention is to use `i`, `j`, `k` as loop items.
+It will be best to avoid using these as named objects elsewhere in your code.
+
+---
+
+## `while` loop
+
+A `while` loop will iterate code until a given condition is `FALSE`.
+
+
+```r
+i &lt;-  1
+res &lt;- rep(0, 10)
+
+i
+```
+
+```
+#&gt; [1] 1
+```
+
+```r
+res
+```
+
+```
+#&gt;  [1] 0 0 0 0 0 0 0 0 0 0
+```
+
+--
+
+
+```r
+while (i &lt;= 10) {
+  res[i] &lt;- i ^ 2
+  i &lt;- i + 1
+}
+
+res
+```
+
+```
+#&gt;  [1]   1   4   9  16  25  36  49  64  81 100
+```
+
+---
+
+## `repeat` loop
+
+A `repeat` loop will iterate code until a `break` statement is executed.
+
+
+```r
+i &lt;- 1
+res &lt;- rep(NA, 10)
+
+repeat {
+  res[i] &lt;- i ^ 2
+  i &lt;- i + 1
+  if (i &gt; 10) {break}
+}
+
+res
+```
+
+```
+#&gt;  [1]   1   4   9  16  25  36  49  64  81 100
+```
+
+---
+
+## Loop keywords: `next` and `break`
+
+- `next` exits the current iteration and advances the looping index
+
+- `break` exits the loop
+
+- Both `break` and `next` apply only to the innermost of nested loops.
+
+
+```r
+for (i in 1:10) {
+* if (i %% 2 == 0) {next}
+  
+  print(paste("Number ", i, " is odd."))
+  
+* if (i %% 7 == 0) {break}
+}
+```
+
+--
+
+
+```
+#&gt; [1] "Number  1  is odd."
+#&gt; [1] "Number  3  is odd."
+#&gt; [1] "Number  5  is odd."
+#&gt; [1] "Number  7  is odd."
+```
+
+---
+
+## Ancillary loop functions
+
+You may want to loop over indices of an object as opposed to the object's values.
+To do this, consider using one of `length()`, `seq()`, `seq_along()`, and
+`seq_len()`.
+
+.pull-left[
+
+```r
+4:7
+```
+
+```
+#&gt; [1] 4 5 6 7
+```
+
+```r
+length(4:7)
+```
+
+```
+#&gt; [1] 4
+```
+
+```r
+seq(4, 7)
+```
+
+```
+#&gt; [1] 4 5 6 7
+```
+]
+
+.pull-right[
+
+```r
+seq_along(4:7)
+```
+
+```
+#&gt; [1] 1 2 3 4
+```
+
+```r
+seq_len(length(4:7))
+```
+
+```
+#&gt; [1] 1 2 3 4
+```
+
+```r
+seq(4, 7, by = 2)
+```
+
+```
+#&gt; [1] 4 6
+```
+]
+
+&lt;br&gt;
+
+Iterating over `seq_along(x)` is a better option than `1:length(x)`.
+
+---
+
+## Loop tips
+
+1. Preallocate your output object when possible.
+
+2. Don't use a `while` or `repeat` loop if a `for` loop is possible.
+
+3. Don't use any type of loop if vectorization is possible.
+
+--
+
+.pull-left[
+Slow...
+
+```r
+a &lt;- c()
+for (i in seq_len(10)) {
+  a &lt;- c(a, i ^ 3)
+}
+```
+]
+
+--
+
+.pull-right[
+Faster...
+
+```r
+a &lt;- numeric(10)
+for (i in seq_len(10)) {
+  a[i] &lt;- i ^ 3
+}
+```
+]
+
+--
+
+Even faster...
+
+
+```r
+(1:10) ^ 3
+```
+
+---
+
+## Exercises
+
+1. Consider the vector `x` below.
+    
+    ```r
+    x &lt;- c(3, 4, 12, 19, 23, 49, 100, 63, 70)
+    ```
+Write R code that prints the perfect squares in `x`.
+&lt;br&gt;&lt;br&gt;
+2. Consider `z &lt;- c(-1, .5, 0, .5, 1)`. Write R code that prints
+   the smallest non-negative integer `\(k\)` satisfying the inequality
+   `$$\lvert cos(k) - z \rvert &lt; 0.001$$`
+   for each component of `z`.
+
+???
+
+## Solution
+
+1.
+.solution[
+
+```r
+x &lt;- c(3, 4, 12, 19, 23, 49, 100, 63, 70)
+
+for (i in x) {
+  if (sqrt(i) %% 1) {
+    next
+  }
+  print(i)
+}
+```
+
+```
+#&gt; [1] 4
+#&gt; [1] 49
+#&gt; [1] 100
+```
+]
+
+2.
+.solution[
+
+```r
+for (z in c(-1, .5, 0, .5, 1)) {
+  k &lt;- 0
+  while (abs(cos(k) - z) &gt;= .001) {
+    k &lt;- k + 1
+  }
+  print(k)
+}
+```
+
+```
+#&gt; [1] 22
+#&gt; [1] 21766
+#&gt; [1] 40459
+#&gt; [1] 21766
+#&gt; [1] 0
+```
+]
+
+---
+
+## References
+
+1. Grolemund, G., &amp; Wickham, H. (2019). R for Data Science. https://r4ds.had.co.nz/
+
+2. Wickham, H. (2019). Advanced R. https://adv-r.hadley.nz/
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

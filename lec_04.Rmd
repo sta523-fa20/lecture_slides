@@ -1,0 +1,700 @@
+---
+title: "Data structures and subsetting"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = TRUE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Companion videos
+
+- [Git from the command line](https://warpwire.duke.edu/w/V04EAA/)
+
+Additional resources
+
+- [Sections 3.3 - 3.4](https://adv-r.hadley.nz/vectors-chap.html#attributes) Advanced R
+- [Chapter 4](https://adv-r.hadley.nz/subsetting.html) Advanced R
+
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## Atomic vector creation
+
+We can use functions such as `c()`, `vector()`, and  `:` to create atomic
+vectors.
+
+```{r}
+c(5, 10, pi, 0, -sqrt(3))
+vector(mode = "character", length = 4)
+vector(mode = "integer", length = 3)
+-10:-3
+```
+
+---
+
+## Generic vector creation
+
+Function `list()` allows us to create a generic vector.
+
+```{r}
+x <- list(
+    a         = -100:100, 
+    b         = list(lower = letters, upper = LETTERS),
+    cars_data = cars
+  )
+
+str(x)
+```
+
+---
+
+class: inverse, center, middle
+
+# Attributes
+
+---
+
+## Data structures
+
+You may have heard of factors, matrices, arrays, and date-times. These are
+just atomic vectors with special attributes.
+
+- Attributes attach metadata to an object.
+
+--
+
+- Function `attr()` can retrieve and modify a single attribute.
+    ```{r eval=FALSE}
+    attr(x, which) # get attribute
+    attr(x, which) <- value # set / modify attribute
+    ```
+
+--
+
+- Function `attributes()` can retrieve and set attributes en masse.
+    ```{r eval=FALSE}
+    attributes(x) # get attributes
+    attributes(x) <- value # set / modify attributes
+    ```
+  
+---
+
+## Attribute: `names`
+
+Get or set the names of an object.
+
+**One option:**
+
+```{r}
+x <- 1:4
+attributes(x)
+attr(x = x, which = "names") <- c("a", "b", "c", "d")
+attributes(x)
+x
+```
+
+---
+
+**Another option:**
+
+```{r}
+a <- 1:4
+names(a) <- c("a", "b", "c", "d")
+attributes(a)
+a
+```
+
+<br/>
+
+Either method is okay to use, but stick with using the replacement function.
+
+---
+
+## Attribute: `dim`
+
+Get or set the dimension of an object.
+
+```{r}
+z <- 1:9
+z
+attr(x = z, which = "dim") <- c(3, 3)
+attributes(z)
+z
+```
+
+--
+
+We have a 3 x 3 matrix.
+
+---
+
+```{r}
+y <- matrix(z, nrow = 3, ncol = 3)
+attributes(y)
+y
+```
+
+---
+
+## Exercise
+
+Create a 3 x 3 x 2 array using the `dim` attribute with the vector below.
+
+```{r}
+x <- c(5, 1, 5, 5, 1, 1, 5, 3, 2, 3, 2, 6, 4, 4, 1, 2, 1, 3)
+```
+
+<br/>
+
+Try to create the same array using function `array()`. What do you notice about
+how the array object is populated?
+
+???
+
+## Solution
+
+.tiny[
+```{r}
+x <- c(5, 1, 5, 5, 1, 1, 5, 3, 2, 
+       3, 2, 6, 4, 4, 1, 2, 1, 3)
+attr(x = x, which = "dim") <- c(3, 3, 2)
+x
+attributes(x)
+```
+
+```{r}
+array(x, dim = c(3, 3, 2))
+```
+
+]
+
+---
+
+## Factors
+
+Factors are built on top of integer vectors with two attributes: `class` and
+`levels`. Factors are how R stores and represents categorical data.
+
+A quick way to create a categorical variable as a factor is with function
+`factor()`.
+
+```{r}
+x <- factor(c("walk", "single", "double", "triple", "home run"))
+x
+```
+
+--
+
+```{r}
+typeof(x)
+attributes(x)
+```
+
+---
+
+## Ordered factors
+
+To induce an ordering we can use function `ordered()` as opposed to `factor()`.
+
+```{r}
+y <- ordered(c("walk", "single", "double", "triple", "home run"), 
+        levels = c("walk", "single", "double", "triple", "home run"))
+y
+```
+
+--
+
+```{r}
+attributes(y)
+str(y)
+```
+
+---
+
+## Exercise
+
+Create a factor vector based on the vector of airport codes below. Try to do
+it without using function `factor()`.
+
+```{r}
+airports <- c("RDU", "ABE", "DTW", "GRR", "RDU", "GRR", "GNV",
+             "JFK", "JFK", "SFO", "DTW")
+```
+
+Assume all the possible levels are 
+
+```{r eval=FALSE}
+c("RDU", "ABE", "DTW", "GRR", "GNV", "JFK", "SFO")
+```
+
+*Hint*: Think about what type of object factors are built on.
+
+<br/>
+
+What if the possible levels are
+
+```{r eval=FALSE}
+c("RDU", "ABE", "DTW", "GRR", "GNV", "JFK", "SFO", "GSO", "ORD", "PHL")
+```
+
+???
+
+## Solution
+.tiny[
+```{r}
+z <- as.integer(c(1,2,3,4,1,4,5,6,6,7,3))
+attr(x = z, which = "levels") <- c("RDU", "ABE", "DTW", 
+                                   "GRR", "GNV", "JFK", "SFO")
+attr(x = z, which = "class") <- "factor"
+z
+attributes(z)
+```
+]
+
+---
+
+## Matrices and arrays
+
+- Homogeneous in their type.
+
+- Matrices are populated based on column major ordering (use `byrow` argument
+  to change this).
+  
+- Arrays can have one, two or more dimensions.
+
+---
+
+## Data frames
+
+Data frames are built on top of lists with attributes: `names`, `row.names`,
+and `class`. Here the class is `data.frame`.
+
+```{r}
+typeof(longley)
+attributes(longley)
+```
+
+--
+
+Here `names` refers to variable names.
+
+---
+
+## Data frame characteristics
+
+- Data frames can be heterogeneous across columns.
+
+- Data frames are rectangular in structure (not always tidy).
+
+- They have column names and row names.
+
+- Data frames can be subset by name or position.
+
+---
+
+## Data frame creation by setting attributes
+
+Start with a list
+
+```{r}
+x <- list(c("48501", "48507", "48505"),
+          c(3, 4, 21),
+          c(2, 1, 2))
+str(x)
+```
+
+--
+
+Add attributes
+
+```{r}
+attributes(x) <- list(class     = "data.frame",
+                      names     = c("zip", "lead_value", "time"),
+                      row.names = 1:3)
+```
+
+---
+
+Then we have a data frame
+
+```{r}
+x
+str(x)
+```
+
+Of course, we could have used function `data.frame()` to create our data
+frame object. There is also function `tidyverse::tibble()` - it creates a 
+tibble object. Similar to a data frame but with two addition class components.
+
+---
+
+## Length coercion
+
+Coercion is slightly different for data frames.
+
+.pull-left[
+
+
+```{r}
+data.frame(x = 1:3, y = c("a"))
+```
+
+
+]
+
+.pull-right[
+
+```{r eval=FALSE}
+data.frame(x = 1:3, 
+           y = c("a","b"))
+```
+
+```
+#> Error in 
+#> data.frame(x = 1:3, 
+#>            y = c("a", "b")) : 
+#> arguments imply differing number of 
+#> rows: 3, 2
+```
+]
+
+If a shorter vector is not a multiple of the longest vector an error will
+occur.
+
+--
+
+<br/>
+
+What do you think will happen here?
+
+```{r eval=FALSE}
+data.frame(num       = 1:6,
+           treatment = c(0, 10, 20),
+           type      = c("a", "b"))
+```
+
+---
+
+## Summary
+
+.small-text[
+
+| Data Structure | Built On              | Attribute(s)                  | Quick creation                 |
+|----------------|-----------------------|-------------------------------|--------------------------------|
+| Matrix, Array  | Atomic vector         | `dim`                         | `matrix()`, `array()`          |
+| Factor         | Atomic integer vector | `class`, `levels`             | `factor()`, `ordered()`        |
+| Date           | Atomic double vector  | `class`                       | `as.Date()`                    |
+| Date-times     | Atomic double vector  | `class`                       | `as.POSIXct()`, `as.POSIXlt()` |
+| Data frame     | List                  | `class`, `names`, `row.names` | `data.frame()`                 |
+
+]
+
+---
+
+class: inverse, center, middle
+
+# Subsetting
+
+---
+
+## Subsetting techniques
+
+R has three operators (functions) for subsetting:
+1. `[`
+2. `[[`
+3. `$`
+
+Which one you use will depend on the object you are working with, its
+attributes, and what you want as a result.
+
+We can subset with
+
+- integers
+- logicals
+- `NULL`, `NA`
+- character values
+
+---
+
+## Numeric (positive) subsetting
+
+**Indexing begins at 1, not 0.** 
+.tiny[
+```{r}
+x <- c("NC", "SC", "VA", "TN")
+y <- list(states  = x, rank = 1:4, message = "")
+```
+]
+
+--
+
+.tiny.pull-left[
+**Atomic vector**
+```{r}
+x[1]
+x[c(1, 3)]
+x[c(1:5)]
+x[c(2.2, 3.9)]
+```
+
+]
+
+.tiny.pull-right[
+**List**
+```{r}
+str(y[1])
+str(y[c(1, 3)])
+str(y[c(1:4)])
+```
+]
+
+---
+
+## Numeric (negative) subsetting
+
+.tiny[
+```{r}
+x <- c("NC", "SC", "VA", "TN")
+y <- list(states = x, rank = 1:4, message = "")
+```
+]
+
+.tiny.pull-left[
+**Atomic vector**
+```{r error=TRUE}
+x[-1]
+x[-c(1, 3)]
+x[c(-1, 3)]
+x[-c(2.2, 3.9)] #<<
+```
+
+]
+
+.tiny.pull-right[
+**List**
+```{r error=TRUE}
+str(y[-1])
+str(y[-c(1, 3)])
+str(y[c(-1, 3)])
+str(y[-c(2.2, 3.9)]) #<<
+```
+]
+
+---
+
+## Logical subsetting
+
+It returns elements that correspond to `TRUE` in the logical vector. The length 
+of the logical vector is expected to be of the same length as the vector 
+being subset.
+
+.tiny.pull-left[
+**Atomic vector**
+```{r}
+x <- c(1, 4, 7, 12)
+x[c(TRUE, TRUE, FALSE, TRUE)]
+x[c(TRUE, FALSE)]
+x[x %% 2 == 0]
+```
+]
+
+.tiny.pull-right[
+**List**
+```{r error=TRUE}
+y <- list(1, 4, 7, 12)
+str(y[c(TRUE, TRUE, FALSE, TRUE)])
+str(y[c(TRUE, FALSE)])
+```
+```{r eval=FALSE}
+str(y[y %% 2 == 0])
+```
+```
+#> Error in y%%2: non-numeric 
+#> argument to binary operator
+```
+]
+
+
+---
+
+## Empty subsetting
+
+It returns the original vector.
+
+```{r}
+x <- c(1,4,7)
+x[]
+
+y <- list(1,4,7)
+str(y[])
+```
+
+---
+
+## Zero subsetting
+
+Returns an empty vector of the same type as the vector being subset.
+
+```{r}
+x <- c(1,4,7)
+y <- list(1,4,7)
+```
+
+
+.pull-left[
+```{r}
+x[0]
+
+str(y[0])
+```
+]
+
+.pull-right[
+```{r}
+x[c(0,1)]
+
+y[c(0,1)]
+```
+]
+
+---
+
+## Character subsetting
+
+If a vector has names, you can select elements whose names correspond to the 
+character vector.
+
+.pull-left[
+**Atomic vector**
+```{r}
+x  <- c(a = 1, b = 4, c = 7)
+x["a"]
+x[c("a", "a")]
+x[c("c", "b")]
+```
+]
+
+.pull-right[
+**List**
+```{r}
+y <- list(a = 1, b = 4, c = 7)
+str(y["a"])
+str(y[c("a", "a")])
+str(y[c("c", "b")])
+```
+]
+
+---
+
+## Missing and NULL subsetting
+
+.pull-left[
+**Atomic vector**
+```{r}
+x <- c(1, 4, 7)
+x[NA]
+x[NULL]
+x[c(1, NA)]
+```
+]
+
+.pull-right[
+**List**
+```{r}
+y <- list(1, 4, 7)
+str(y[NA])
+str(y[NULL])
+str(y[c(1, NA)])
+```
+]
+
+---
+
+## Exercise
+
+Consider the vectors `x` and `y` below.
+
+```{r}
+x <- letters[1:5]
+y <- list(i = 1:5, j = -3:3, k = rep(0, 4))
+```
+
+What is difference between subsetting with `[` and `[[` using integers? Try
+various indices.
+
+---
+
+
+## Understanding `[` vs. `[[` with lists
+
+.center[
+<img src="images/shopping_cart.png" width="400" height="400">
+]
+
+--
+
+How do you get a shopping cart with only the cheese and bananas?
+
+--
+
+How do you get the bananas out of the cart?
+
+---
+
+## Using `$` for subsetting lists
+
+The `$` operator only works with named lists and works similar to `[[`.
+.tiny.pull-left[
+```{r}
+x <- list(a   = 1:3, 
+          ab  = 4:6, 
+          abc = 7:9)
+x
+x$a
+x$ab
+```
+]
+
+.tiny.pull-right[
+```{r}
+y <- list(a    = 1:3, 
+          abc  = 4:6, 
+          abde = 7:9)
+y
+y$a
+y$abd #<<
+```
+]
+
+---
+
+## References
+
+- Wickham, H. (2020). Advanced R. https://adv-r.hadley.nz/
+
+

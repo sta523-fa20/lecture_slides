@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Data types and functions</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Data types and functions
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Companion videos
+
+- [More on atomic vectors](https://warpwire.duke.edu/w/vTwEAA/)
+- [Generic vectors](https://warpwire.duke.edu/w/vzwEAA/)
+- [Introduction to functions](https://warpwire.duke.edu/w/wTwEAA/)
+- [More on functions](https://warpwire.duke.edu/w/wzwEAA/)
+
+.small-text[
+Videos were created for STA 323 &amp; 523 - Summer 2020
+]
+
+Additional resources
+
+- [Section 3.5](https://adv-r.hadley.nz/vectors-chap.html#lists) Advanced R
+- [Section 3.7](https://adv-r.hadley.nz/vectors-chap.html#null) Advanced R
+- [Chapter 6](https://adv-r.hadley.nz/functions.html) Advanced R
+
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## Vectors
+
+The fundamental building block of data in R is a vector (collections of related 
+values, objects, other data structures, etc).
+
+
+R has two types of vectors:
+
+* **atomic** vectors 
+
+    - homogeneous collections of the *same* type (e.g. all logical values, all 
+      numbers, or all character strings).
+
+* **generic** vectors
+  
+    - heterogeneous collections of *any* type of R object, even other lists 
+      (meaning they can have a hierarchical/tree-like structure).
+    
+&lt;br&gt;&lt;br&gt;
+
+I will use the term component or element when referring to a value
+inside a vector.
+
+---
+
+## Atomic vectors
+
+R has six atomic vector types: 
+  
+&lt;br/&gt;
+  
+.center[
+`logical`, `integer`, `double`,  `character`, `complex`, `raw`      
+]
+
+In this course we will mostly work with the first four. You will rarely work
+with the last two types - complex and raw.
+
+---
+
+## Conditional control flow
+
+Conditional (choice) control flow is governed by `if` and `switch()`.
+
+.pull-left[
+
+```r
+if (condition) {
+  # code to run
+  # when condition is
+  # TRUE
+}
+```
+]
+
+.pull-right[
+
+```r
+if (TRUE) {
+  print("The condition must have been true!")
+}
+```
+]
+
+---
+
+## `if` is not vectorized
+
+To remedy this potential problem of a non-vectorized `if`, you can
+
+1. try to collapse the logical vector to a vector of length 1
+
+    - `any()`
+    - `all()`
+
+2. use a vectorized conditional function such as `ifelse()` or
+   `dplyr::case_when()`.
+
+---
+
+## Loop types
+
+R supports three types of loops: `for`, `while`, and `repeat`.
+
+
+```r
+for (item in vector) {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+
+```r
+while (we_have_a_true_condition) {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+
+```r
+repeat {
+  ##
+  ## Iterate this code
+  ##
+}
+```
+
+In the `repeat` loop we will need a `break` statement to end iteration.
+
+---
+
+## Concatenation
+
+Atomic vectors can be constructed using the concatenate, `c()`, function.
+
+
+```r
+c(1,2,3)
+```
+
+```
+#&gt; [1] 1 2 3
+```
+
+
+
+```r
+c("Hello", "World!")
+```
+
+```
+#&gt; [1] "Hello"  "World!"
+```
+
+
+
+```r
+c(1,c(2, c(3)))
+```
+
+```
+#&gt; [1] 1 2 3
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+Atomic vectors are always flat.
+
+---
+
+class: inverse, center, middle
+
+# More on atomic vectors
+
+---
+
+## Atomic vectors
+
+
+  `typeof()`  |  `mode()`     |  `storage.mode()`
+:-----------|:------------|:----------------
+logical     |  logical    |  logical
+double      |  numeric    |  double
+integer     |  numeric    |  integer
+character   |  character  |  character
+complex     |  complex    |  complex
+raw         |  raw        |  raw
+
+&lt;br&gt;
+
+- Function `typeof()` can handle any object
+
+- Functions `mode()` and `storage.mode()` allow for assignment
+
+---
+
+## Examples of type and mode
+
+.pull-left[
+
+```r
+typeof(c(T, F, T))
+```
+
+```
+#&gt; [1] "logical"
+```
+
+```r
+typeof(7)
+```
+
+```
+#&gt; [1] "double"
+```
+
+```r
+typeof(7L)
+```
+
+```
+#&gt; [1] "integer"
+```
+
+```r
+typeof("S")
+```
+
+```
+#&gt; [1] "character"
+```
+
+```r
+typeof("Shark")
+```
+
+```
+#&gt; [1] "character"
+```
+]
+
+.pull-right[
+
+```r
+mode(c(T, F, T))
+```
+
+```
+#&gt; [1] "logical"
+```
+
+```r
+mode(7)
+```
+
+```
+#&gt; [1] "numeric"
+```
+
+```r
+mode(7L)
+```
+
+```
+#&gt; [1] "numeric"
+```
+
+```r
+mode("S")
+```
+
+```
+#&gt; [1] "character"
+```
+
+```r
+mode("Shark")
+```
+
+```
+#&gt; [1] "character"
+```
+]
+
+---
+
+## Atomic vector type observations
+
+- Numeric means an object of type integer or double.
+
+- Integers must be followed by an L, except if you use operator `:`.
+    
+    ```r
+    x &lt;- 1:100
+    y &lt;- as.numeric(1:100)
+    c(typeof(x), typeof(y))
+    ```
+    
+    ```
+    #&gt; [1] "integer" "double"
+    ```
+    
+    ```r
+    object.size(x)
+    object.size(y)
+    ```
+    
+    ```
+    #&gt; 448 bytes
+    #&gt; 848 bytes
+    ```
+
+- There is no "string" type or mode, only "character".
+
+---
+
+## Logical predicates
+
+The `is.*(x)` family of functions performs a logical test as to whether
+`x` is of type `*`. For example,
+
+.pull-left[
+
+```r
+is.integer(T)
+```
+
+```
+#&gt; [1] FALSE
+```
+
+```r
+is.double(pi)
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+is.character("abc")
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+is.numeric(1L)
+```
+
+```
+#&gt; [1] TRUE
+```
+]
+
+.pull-right[
+
+```r
+is.integer(pi)
+```
+
+```
+#&gt; [1] FALSE
+```
+
+```r
+is.double(pi)
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+is.integer(1:10)
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+is.numeric(1)
+```
+
+```
+#&gt; [1] TRUE
+```
+]
+
+Function `is.numeric(x)` returns `TRUE` when `x` is integer or double.
+
+---
+
+## Coercion
+
+Previously, we looked at R's coercion hierarchy:
+
+.center[
+`character` `\(\rightarrow\)` `double` `\(\rightarrow\)` `integer` `\(\rightarrow\)` `logical`
+]
+
+Coercion can happen implicitly through functions and operations; it can
+occur explicitly via the `as.*()` family of functions.
+
+---
+
+## Implicit coercion
+
+.pull-left[
+
+
+```r
+x &lt;- c(T, T, F, F, F)
+mean(x)
+```
+
+```
+#&gt; [1] 0.4
+```
+
+```r
+c(1L, 1.0, "one")
+```
+
+```
+#&gt; [1] "1"   "1"   "one"
+```
+
+```r
+0 &gt;= "0"
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+(0 == "0") != "TRUE"
+```
+
+```
+#&gt; [1] FALSE
+```
+]
+
+.pull-right[
+
+
+```r
+1 &amp; TRUE &amp; 5.0 &amp; pi
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+0 == FALSE
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+(0 | 1) &amp; 0
+```
+
+```
+#&gt; [1] FALSE
+```
+]
+
+---
+
+## Explicit coercion
+
+.pull-left[
+
+```r
+as.logical(sqrt(2))
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+as.character(5L)
+```
+
+```
+#&gt; [1] "5"
+```
+
+```r
+as.integer("4")
+```
+
+```
+#&gt; [1] 4
+```
+
+```r
+as.integer("four")
+```
+
+```
+#&gt; [1] NA
+```
+]
+
+.pull-right[
+
+```r
+as.numeric(FALSE)
+```
+
+```
+#&gt; [1] 0
+```
+
+```r
+as.double(10L)
+```
+
+```
+#&gt; [1] 10
+```
+
+```r
+as.complex(5.4)
+```
+
+```
+#&gt; [1] 5.4+0i
+```
+
+```r
+as.logical(as.character(3))
+```
+
+```
+#&gt; [1] NA
+```
+]
+
+---
+
+## Reserved words: `NA`, `NaN`, `Inf`, `-Inf`
+
+- `NA` is a logical constant of length 1 which serves a missing value indicator.
+
+- `NaN` stands for not a number.
+
+- `Inf`, `-Inf` are positive and negative infinity, respectively.
+
+---
+
+## Missing values
+
+- `NA` can be coerced to any other vector type except raw.
+
+.pull-left[
+
+```r
+typeof(NA)
+```
+
+```
+#&gt; [1] "logical"
+```
+
+```r
+typeof(NA+1)
+```
+
+```
+#&gt; [1] "double"
+```
+
+```r
+typeof(NA+1L)
+```
+
+```
+#&gt; [1] "integer"
+```
+]
+
+.pull-right[
+
+```r
+typeof(NA_character_)
+```
+
+```
+#&gt; [1] "character"
+```
+
+```r
+typeof(NA_real_)
+```
+
+```
+#&gt; [1] "double"
+```
+
+```r
+typeof(NA_integer_)
+```
+
+```
+#&gt; [1] "integer"
+```
+]
+
+---
+
+## `NA` in, `NA` out (most of the time)
+
+
+```r
+x &lt;- c(-4, 0, NA, 33, 1 / 9)
+mean(x)
+```
+
+```
+#&gt; [1] NA
+```
+
+```r
+NA ^ 4
+```
+
+```
+#&gt; [1] NA
+```
+
+```r
+log(NA)
+```
+
+```
+#&gt; [1] NA
+```
+
+--
+
+Some of the `base` R functions have an argument `na.rm` to remove `NA` values in
+the calculation.
+
+
+```r
+mean(x, na.rm = TRUE)
+```
+
+```
+#&gt; [1] 7.277778
+```
+
+---
+
+## Special non-infectious `NA` cases
+
+
+```r
+NA ^ 0
+```
+
+```
+#&gt; [1] 1
+```
+
+```r
+NA | TRUE
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+NA &amp; FALSE
+```
+
+```
+#&gt; [1] FALSE
+```
+
+--
+
+&lt;br&gt;
+
+Why does `NA / Inf` result in `NA`?
+
+---
+
+## Testing for `NA`
+
+Use function `is.na()` (vectorized) to test for `NA` values.
+
+.pull-left[
+
+```r
+is.na(NA)
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+is.na(1)
+```
+
+```
+#&gt; [1] FALSE
+```
+
+```r
+is.na(c(1,2,3,NA))
+```
+
+```
+#&gt; [1] FALSE FALSE FALSE  TRUE
+```
+]
+
+.pull-right[
+
+```r
+any(is.na(c(1,2,3,NA)))
+```
+
+```
+#&gt; [1] TRUE
+```
+
+```r
+all(is.na(c(1,2,3,NA)))
+```
+
+```
+#&gt; [1] FALSE
+```
+]
+
+---
+
+## `NaN`, `Inf`, and `-Inf`
+
+.pull-left[
+
+```r
+-5 / 0
+```
+
+```
+#&gt; [1] -Inf
+```
+
+```r
+0 / 0
+```
+
+```
+#&gt; [1] NaN
+```
+
+```r
+1/0 + 1/0
+```
+
+```
+#&gt; [1] Inf
+```
+]
+
+.pull-right[
+
+```r
+1/0 - 1/0
+```
+
+```
+#&gt; [1] NaN
+```
+
+```r
+NaN / NA
+```
+
+```
+#&gt; [1] NaN
+```
+
+```r
+NaN * NA
+```
+
+```
+#&gt; [1] NaN
+```
+]
+
+- Functions `is.finite()` and `is.nan()` test for `Inf`, `-Inf`, and `NaN`,
+  respectively.
+
+- Coercion is possible with the `as.*()` family of functions. Be careful with
+  these; they may not always work as you expect.
+
+.small-text[
+
+```r
+as.integer(Inf)
+```
+
+```
+#&gt; [1] NA
+```
+]
+
+???
+
+- Note that current implementations of R use 32-bit integers for integer vectors, 
+  so the range of representable integers is restricted to about +/-2*10^9: 
+  doubles can hold much larger integers exactly.
+
+- Computations involving `NaN` will return `NaN` or perhaps `NA`: which of those 
+  two is not guaranteed and may depend on the R platform
+  
+---
+
+## Atomic vector properties
+
+- Homogeneous
+
+- Elements can have names
+
+- Elements can be indexed by name or position
+
+- Matrices, arrays, factors, and date-times are built on top of atomic
+  vectors by adding attributes.
+  
+.pull-left[
+
+```r
+x &lt;- c(-3:2)
+attributes(x)
+```
+
+```
+#&gt; NULL
+```
+
+```r
+x
+```
+
+```
+#&gt; [1] -3 -2 -1  0  1  2
+```
+]
+.pull-right[
+
+```r
+attr(x, which = "dim") &lt;- c(2, 3)
+attributes(x)
+```
+
+```
+#&gt; $dim
+#&gt; [1] 2 3
+```
+
+```r
+x
+```
+
+```
+#&gt;      [,1] [,2] [,3]
+#&gt; [1,]   -3   -1    1
+#&gt; [2,]   -2    0    2
+```
+]
+  
+
+---
+
+## Exercises
+
+1. What is the type of each vector below? Check your answer in R.
+    
+    ```r
+    c(4L, 16, 0)
+    c(NaN, NA, -Inf)
+    c(NA, TRUE, FALSE, "TRUE")
+    c(pi, NaN, NA)
+    ```
+&lt;br&gt;
+2. Write a conditional statement that prints "Can't proceed NA or NaN present!"
+   if a vector contains `NA` or `NaN`. Test your code with vectors `x` and `y`
+   below.
+    
+    ```r
+    x &lt;- NA
+    y &lt;- c(1:5, NaN, NA, sqrt(3))
+    ```
+
+???
+
+## Solutions
+
+1.
+
+.solution[
+
+```r
+typeof(c(4L, 16, 0))
+```
+
+```
+#&gt; [1] "double"
+```
+
+```r
+typeof(c(NaN, NA, -Inf))
+```
+
+```
+#&gt; [1] "double"
+```
+
+```r
+typeof(c(NA, TRUE, FALSE, "TRUE"))
+```
+
+```
+#&gt; [1] "character"
+```
+
+```r
+typeof(c(pi, NaN, NA))
+```
+
+```
+#&gt; [1] "double"
+```
+]
+
+2.
+
+.solution[
+
+```r
+x &lt;- NA
+y &lt;- c(1:5, NaN, NA, sqrt(3))
+if (any(is.na(x))) {print("Can't proceed NA or NaN present!")}
+```
+
+```
+#&gt; [1] "Can't proceed NA or NaN present!"
+```
+
+```r
+if (any(is.na(y))) {print("Can't proceed NA or NaN present!")}
+```
+
+```
+#&gt; [1] "Can't proceed NA or NaN present!"
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Generic vectors
+
+---
+
+## Lists
+
+Lists are generic vectors, in that they are 1 dimensional (i.e. have a length) 
+and can contain any type of R object. They are heterogeneous structures.
+
+
+```r
+list("A", c(TRUE,FALSE), (1:4)/2, function(x) x^2)
+```
+
+```
+#&gt; [[1]]
+#&gt; [1] "A"
+#&gt; 
+#&gt; [[2]]
+#&gt; [1]  TRUE FALSE
+#&gt; 
+#&gt; [[3]]
+#&gt; [1] 0.5 1.0 1.5 2.0
+#&gt; 
+#&gt; [[4]]
+#&gt; function(x) x^2
+```
+
+---
+
+## Structure
+
+For complex objects, function `str()` will display the structure in a compact
+form.
+
+
+```r
+str(list("A", c(TRUE,FALSE), (1:4)/2, function(x) x^2))
+```
+
+```
+#&gt; List of 4
+#&gt;  $ : chr "A"
+#&gt;  $ : logi [1:2] TRUE FALSE
+#&gt;  $ : num [1:4] 0.5 1 1.5 2
+#&gt;  $ :function (x)  
+#&gt;   ..- attr(*, "srcref")= 'srcref' int [1:8] 1 39 1 53 39 53 1 1
+#&gt;   .. ..- attr(*, "srcfile")=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x7f9b46eba840&gt;
+```
+
+---
+
+## Coercion and testing
+
+Lists can be complex structures and even include other lists.
+
+
+```r
+x &lt;- list("a", list("b", c("c", "d"), list(1:5)))
+```
+
+
+```r
+&gt; str(x)
+*List of 2
+*$ : chr "a"
+*$ :List of 3
+  ..$ : chr "b"
+  ..$ : chr [1:2] "c" "d"
+  ..$ :List of 1
+  .. ..$ : int [1:5] 1 2 3 4 5
+```
+
+---
+
+## Coercion and testing
+
+Lists can be complex structures and even include other lists.
+
+
+```r
+x &lt;- list("a", list("b", c("c", "d"), list(1:5)))
+```
+
+
+```r
+&gt; str(x)
+List of 2     
+$ : chr "a"
+*$ :List of 3
+* ..$ : chr "b"
+* ..$ : chr [1:2] "c" "d"
+* ..$ :List of 1
+  .. ..$ : int [1:5] 1 2 3 4 5
+```
+
+---
+
+## Coercion and testing
+
+Lists can be complex structures and even include other lists.
+
+
+```r
+x &lt;- list("a", list("b", c("c", "d"), list(1:5)))
+```
+
+
+```r
+&gt; str(x)
+List of 2     
+$ : chr "a"
+$ :List of 3              
+  ..$ : chr "b"            
+  ..$ : chr [1:2] "c" "d"  
+* ..$ :List of 1
+* .. ..$ : int [1:5] 1 2 3 4 5
+```
+
+--
+
+
+```r
+typeof(x)
+```
+
+```
+#&gt; [1] "list"
+```
+
+You can test for a list and coerce an object to a list with `is.list()` and
+`as.list()`, respectively.
+
+---
+
+## Flattening
+
+Function `unlist()` will turn a list into an atomic vector. Keep R's coercion
+hierarchy in mind if you use this function.
+
+
+```r
+y &lt;- list(1:5, pi, c(T, F, T, T))
+unlist(y)
+```
+
+```
+#&gt;  [1] 1.000000 2.000000 3.000000 4.000000 5.000000 3.141593 1.000000 0.000000
+#&gt;  [9] 1.000000 1.000000
+```
+&lt;br&gt;
+--
+
+
+```r
+x &lt;- list("a", list("b", c("c", "d"), list(1:5)))
+unlist(x)
+```
+
+```
+#&gt; [1] "a" "b" "c" "d" "1" "2" "3" "4" "5"
+```
+
+---
+
+## List properties
+
+- Lists are heterogeneous.
+
+- Lists elements can have names.
+    
+    ```r
+    list(stocks = c("AAPL", "BA", "PFE", "C"), 
+         eps    = c(1.1, .9, 2.3, .54),
+         index  = c("DJIA", "NASDAQ", "SP500"))
+    ```
+    
+    ```
+    #&gt; $stocks
+    #&gt; [1] "AAPL" "BA"   "PFE"  "C"   
+    #&gt; 
+    #&gt; $eps
+    #&gt; [1] 1.10 0.90 2.30 0.54
+    #&gt; 
+    #&gt; $index
+    #&gt; [1] "DJIA"   "NASDAQ" "SP500"
+    ```
+    
+- Lists can be indexed by name or position.
+
+- Lists let you extract sublists or a specific object.
+
+---
+
+## Exercise
+
+Create a list based on the JSON product order data below.
+```
+[
+ {
+  "id": {
+    "oid": "5968dd23fc13ae04d9000001"
+  },
+  "product_name": "sildenafil citrate",
+  "supplier": "Wisozk Inc",
+  "quantity": 261,
+  "unit_cost": "$10.47"
+ },
+ 
+ {
+  "id": {
+    "oid": "5968dd23fc13ae04d9000002"
+  },
+  "product_name": "Mountain Juniperus ashei",
+  "supplier": "Keebler-Hilpert",
+  "quantity": 292,
+  "unit_cost": "$8.74"
+ }
+]
+```
+
+???
+
+## Solution
+
+.solution[
+
+```r
+list(
+  list(
+    id = list(oid = "5968dd23fc13ae04d9000001"),
+    product_name = "sildenafil citrate",
+    supplier = "Wisozk Inc",
+    quantity = 261,
+    unit_cost = "$10.47"
+  ),
+  list(
+    id = list(oid = "5968dd23fc13ae04d9000002"),
+    product_name = "Mountain Juniperus ashei",
+    supplier = "Keebler-Hilpert",
+    quantity = 292,
+    unit_cost = "$8.74"
+  )
+)
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Functions
+
+---
+
+## Fundamentals
+
+A function is comprised of arguments (formals), body, and environment. The first
+two will be our main focus as we use and develop these objects.
+
+
+
+.pull-left[
+
+```r
+f &lt;- function(x, y, z) {
+  
+  # combine words
+  paste(x, y, z, sep = " ")
+  
+}
+
+f(x = "just", y = "three", 
+  z = "words")
+```
+
+```
+#&gt; [1] "just three words"
+```
+]
+.pull-right[
+
+```r
+formals(f)
+```
+
+```
+#&gt; $x
+#&gt; 
+#&gt; 
+#&gt; $y
+#&gt; 
+#&gt; 
+#&gt; $z
+```
+
+```r
+body(f)
+```
+
+```
+#&gt; {
+#&gt;     paste(x, y, z, sep = " ")
+#&gt; }
+```
+
+```r
+environment(f)
+```
+
+```
+#&gt; &lt;environment: R_GlobalEnv&gt;
+```
+]
+
+---
+
+## Exiting
+
+Most functions end by returning a value (implicitly or explicitly) or in error.
+
+**Implicit return**
+
+
+```r
+centers &lt;- function(x) {
+  
+  c(mean(x), median(x))
+  
+}
+```
+
+**Explicit return**
+
+
+```r
+standardize &lt;- function(x) {
+  
+  stopifnot(length(x) &gt; 1)
+  x_stand &lt;- (x - mean(x)) / sd(x)
+  return(x_stand)
+  
+}
+```
+
+R functions can return any object.
+
+---
+
+## Calls
+
+Function calls involve the function's name and, at a minimum, values to
+its required arguments. Arguments can be given values by
+
+1. position
+    
+    ```r
+    z &lt;- 1:30
+    mean(z, .3, FALSE)
+    ```
+    
+    ```
+    #&gt; [1] 15.5
+    ```
+--
+2. name
+    
+    ```r
+    mean(x = z, trim = .3, na.rm = FALSE)
+    ```
+    
+    ```
+    #&gt; [1] 15.5
+    ```
+--
+3. partial name matching
+    
+    ```r
+    mean(x = z, na = FALSE, t = .3)
+    ```
+    
+    ```
+    #&gt; [1] 15.5
+    ```
+
+---
+
+## Call style
+
+The best choice is
+
+
+```r
+mean(z, trim = .3)
+```
+
+```
+#&gt; [1] 15.5
+```
+
+Leave the argument's name out for the commonly used (required) arguments, and 
+always specify the argument names for the optional arguments.
+
+---
+
+## Scope
+
+R uses lexical scoping. This provides a lot of flexibility, but it can also
+be problematic if a user is not careful. Let's see if we can get an idea of
+the scoping rules.
+
+
+```r
+y &lt;- 1
+
+f &lt;- function(x){
+  
+  y &lt;- x ^ 2
+  return(y)
+  
+}
+
+*f(x = 3)
+*y 
+```
+
+What is the result of `f(x = 3)` and `y`?
+
+???
+
+.solution[
+
+```r
+y &lt;- 1
+
+f &lt;- function(x){
+  
+  y &lt;- x ^ 2
+  return(y)
+  
+}
+
+f(x = 3) 
+```
+
+```
+#&gt; [1] 9
+```
+
+```r
+y 
+```
+
+```
+#&gt; [1] 1
+```
+]
+
+---
+
+
+```r
+y &lt;- 1
+z &lt;- 2
+
+f &lt;- function(x){
+  
+  y &lt;- x ^ 2
+  
+  g &lt;- function() {
+    
+    c(x, y, z)
+    
+  } # closes body of g()
+  
+  g()
+  
+} # closes body of f()
+
+
+*f(x = 3)
+*c(y, z)
+```
+
+What is the result of `f(x = 3)` and `c(y, z)`?
+
+--
+
+R first searches for a value associated with a name in the current environment.
+If the object is not found the search is widened to the next higher scope.
+
+???
+
+.solution[
+
+
+```r
+y &lt;- 1
+z &lt;- 2
+
+f &lt;- function(x){
+  
+  y &lt;- x ^ 2
+  
+  g &lt;- function() {
+    
+    c(x, y, z)
+    
+  } # closes body of g()
+  
+  g()
+  
+} # closes body of f()
+
+
+f(x = 3)
+```
+
+```
+#&gt; [1] 3 9 2
+```
+
+```r
+c(y, z) 
+```
+
+```
+#&gt; [1] 1 2
+```
+ 
+]
+
+---
+
+## Lazy evaluation
+
+.pull-left[
+Arguments to R functions are not evaluated until needed.
+
+```r
+f &lt;- function(a, b, x) {
+  print(a)
+  print(b ^ 2)
+  0 * x
+}
+
+f(5, 6)
+```
+
+```
+#&gt; [1] 5
+#&gt; [1] 36
+```
+
+```
+#&gt; Error in f(5, 6): argument "x" is missing, with no default
+```
+
+]
+
+.middle.pull-right[
+![](images/sloth.png)
+]
+
+---
+
+## Four function forms
+
+|     Form    |          Description         |         Example(s)        |
+|:-----------:|:----------------------------:|:-------------------------:|
+| Prefix      | name comes before arguments  | `log(x, base = exp(1))`   |
+| Infix       | name between arguments       | `+`, `%&gt;%`, `%/%`         |
+| Replacement | replace values by assignment | `names(x) &lt;- c("a", "b")` |
+| Special     | all others not defined above | `[[`, `for`, `break`, `(` |
+
+---
+
+## Help
+
+To get help on any function, type `?fcn_name` in your console, where `fcn_name`
+is the function's name. For infix, replacement, and special functions you
+will need to surround the function with backticks.
+
+
+```r
+?sd
+```
+
+
+```r
+?`for`
+```
+
+
+```r
+?`names&lt;-`
+```
+
+
+```r
+?`%/%`
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+Using function `help()` is an alternative to `?`.
+
+---
+
+## Best practices
+
+- Write a function when you have copied code more than twice.
+
+- Try to use a verb for your function's name.
+
+- Keep argument names short but descriptive.
+
+- Add code comments to explain the "why" of your code.
+
+- Link a family of functions with a common prefix: `pnorm()`, `pbinom()`, 
+  `ppois()`.
+  
+- Keep data arguments first, then other required arguments, then followed by 
+  default arguments. The `...` argument can be placed last.
+
+---
+
+class: middle
+
+&lt;h4&gt;&lt;i&gt;
+To understand computations in R, two slogans are helpful:
+&lt;br&gt;
+- Everything that exists is an object.
+- Everything that happens is a function call.
+&lt;br&gt;&lt;br&gt;&lt;br&gt;
+
+
+John Chambers
+&lt;/i&gt;
+
+
+---
+
+## References
+
+- Grolemund, G., &amp; Wickham, H. (2019). R for Data Science. https://r4ds.had.co.nz/
+
+- Wickham, H. (2019). Advanced R. https://adv-r.hadley.nz/
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Data structures and subsetting</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Data structures and subsetting
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Companion videos
+
+- [Git from the command line](https://warpwire.duke.edu/w/V04EAA/)
+
+Additional resources
+
+- [Sections 3.3 - 3.4](https://adv-r.hadley.nz/vectors-chap.html#attributes) Advanced R
+- [Chapter 4](https://adv-r.hadley.nz/subsetting.html) Advanced R
+
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## Atomic vector creation
+
+We can use functions such as `c()`, `vector()`, and  `:` to create atomic
+vectors.
+
+
+```r
+c(5, 10, pi, 0, -sqrt(3))
+```
+
+```
+#&gt; [1]  5.000000 10.000000  3.141593  0.000000 -1.732051
+```
+
+```r
+vector(mode = "character", length = 4)
+```
+
+```
+#&gt; [1] "" "" "" ""
+```
+
+```r
+vector(mode = "integer", length = 3)
+```
+
+```
+#&gt; [1] 0 0 0
+```
+
+```r
+-10:-3
+```
+
+```
+#&gt; [1] -10  -9  -8  -7  -6  -5  -4  -3
+```
+
+---
+
+## Generic vector creation
+
+Function `list()` allows us to create a generic vector.
+
+
+```r
+x &lt;- list(
+    a         = -100:100, 
+    b         = list(lower = letters, upper = LETTERS),
+    cars_data = cars
+  )
+
+str(x)
+```
+
+```
+#&gt; List of 3
+#&gt;  $ a        : int [1:201] -100 -99 -98 -97 -96 -95 -94 -93 -92 -91 ...
+#&gt;  $ b        :List of 2
+#&gt;   ..$ lower: chr [1:26] "a" "b" "c" "d" ...
+#&gt;   ..$ upper: chr [1:26] "A" "B" "C" "D" ...
+#&gt;  $ cars_data:'data.frame':	50 obs. of  2 variables:
+#&gt;   ..$ speed: num [1:50] 4 4 7 7 8 9 10 10 10 11 ...
+#&gt;   ..$ dist : num [1:50] 2 10 4 22 16 10 18 26 34 17 ...
+```
+
+---
+
+class: inverse, center, middle
+
+# Attributes
+
+---
+
+## Data structures
+
+You may have heard of factors, matrices, arrays, and date-times. These are
+just atomic vectors with special attributes.
+
+- Attributes attach metadata to an object.
+
+--
+
+- Function `attr()` can retrieve and modify a single attribute.
+    
+    ```r
+    attr(x, which) # get attribute
+    attr(x, which) &lt;- value # set / modify attribute
+    ```
+
+--
+
+- Function `attributes()` can retrieve and set attributes en masse.
+    
+    ```r
+    attributes(x) # get attributes
+    attributes(x) &lt;- value # set / modify attributes
+    ```
+  
+---
+
+## Attribute: `names`
+
+Get or set the names of an object.
+
+**One option:**
+
+
+```r
+x &lt;- 1:4
+attributes(x)
+```
+
+```
+#&gt; NULL
+```
+
+```r
+attr(x = x, which = "names") &lt;- c("a", "b", "c", "d")
+attributes(x)
+```
+
+```
+#&gt; $names
+#&gt; [1] "a" "b" "c" "d"
+```
+
+```r
+x
+```
+
+```
+#&gt; a b c d 
+#&gt; 1 2 3 4
+```
+
+---
+
+**Another option:**
+
+
+```r
+a &lt;- 1:4
+names(a) &lt;- c("a", "b", "c", "d")
+attributes(a)
+```
+
+```
+#&gt; $names
+#&gt; [1] "a" "b" "c" "d"
+```
+
+```r
+a
+```
+
+```
+#&gt; a b c d 
+#&gt; 1 2 3 4
+```
+
+&lt;br/&gt;
+
+Either method is okay to use, but stick with using the replacement function.
+
+---
+
+## Attribute: `dim`
+
+Get or set the dimension of an object.
+
+
+```r
+z &lt;- 1:9
+z
+```
+
+```
+#&gt; [1] 1 2 3 4 5 6 7 8 9
+```
+
+```r
+attr(x = z, which = "dim") &lt;- c(3, 3)
+attributes(z)
+```
+
+```
+#&gt; $dim
+#&gt; [1] 3 3
+```
+
+```r
+z
+```
+
+```
+#&gt;      [,1] [,2] [,3]
+#&gt; [1,]    1    4    7
+#&gt; [2,]    2    5    8
+#&gt; [3,]    3    6    9
+```
+
+--
+
+We have a 3 x 3 matrix.
+
+---
+
+
+```r
+y &lt;- matrix(z, nrow = 3, ncol = 3)
+attributes(y)
+```
+
+```
+#&gt; $dim
+#&gt; [1] 3 3
+```
+
+```r
+y
+```
+
+```
+#&gt;      [,1] [,2] [,3]
+#&gt; [1,]    1    4    7
+#&gt; [2,]    2    5    8
+#&gt; [3,]    3    6    9
+```
+
+---
+
+## Exercise
+
+Create a 3 x 3 x 2 array using the `dim` attribute with the vector below.
+
+
+```r
+x &lt;- c(5, 1, 5, 5, 1, 1, 5, 3, 2, 3, 2, 6, 4, 4, 1, 2, 1, 3)
+```
+
+&lt;br/&gt;
+
+Try to create the same array using function `array()`. What do you notice about
+how the array object is populated?
+
+???
+
+## Solution
+
+.tiny[
+
+```r
+x &lt;- c(5, 1, 5, 5, 1, 1, 5, 3, 2, 
+       3, 2, 6, 4, 4, 1, 2, 1, 3)
+attr(x = x, which = "dim") &lt;- c(3, 3, 2)
+x
+```
+
+```
+#&gt; , , 1
+#&gt; 
+#&gt;      [,1] [,2] [,3]
+#&gt; [1,]    5    5    5
+#&gt; [2,]    1    1    3
+#&gt; [3,]    5    1    2
+#&gt; 
+#&gt; , , 2
+#&gt; 
+#&gt;      [,1] [,2] [,3]
+#&gt; [1,]    3    4    2
+#&gt; [2,]    2    4    1
+#&gt; [3,]    6    1    3
+```
+
+```r
+attributes(x)
+```
+
+```
+#&gt; $dim
+#&gt; [1] 3 3 2
+```
+
+
+```r
+array(x, dim = c(3, 3, 2))
+```
+
+```
+#&gt; , , 1
+#&gt; 
+#&gt;      [,1] [,2] [,3]
+#&gt; [1,]    5    5    5
+#&gt; [2,]    1    1    3
+#&gt; [3,]    5    1    2
+#&gt; 
+#&gt; , , 2
+#&gt; 
+#&gt;      [,1] [,2] [,3]
+#&gt; [1,]    3    4    2
+#&gt; [2,]    2    4    1
+#&gt; [3,]    6    1    3
+```
+
+]
+
+---
+
+## Factors
+
+Factors are built on top of integer vectors with two attributes: `class` and
+`levels`. Factors are how R stores and represents categorical data.
+
+A quick way to create a categorical variable as a factor is with function
+`factor()`.
+
+
+```r
+x &lt;- factor(c("walk", "single", "double", "triple", "home run"))
+x
+```
+
+```
+#&gt; [1] walk     single   double   triple   home run
+#&gt; Levels: double home run single triple walk
+```
+
+--
+
+
+```r
+typeof(x)
+```
+
+```
+#&gt; [1] "integer"
+```
+
+```r
+attributes(x)
+```
+
+```
+#&gt; $levels
+#&gt; [1] "double"   "home run" "single"   "triple"   "walk"    
+#&gt; 
+#&gt; $class
+#&gt; [1] "factor"
+```
+
+---
+
+## Ordered factors
+
+To induce an ordering we can use function `ordered()` as opposed to `factor()`.
+
+
+```r
+y &lt;- ordered(c("walk", "single", "double", "triple", "home run"), 
+        levels = c("walk", "single", "double", "triple", "home run"))
+y
+```
+
+```
+#&gt; [1] walk     single   double   triple   home run
+#&gt; Levels: walk &lt; single &lt; double &lt; triple &lt; home run
+```
+
+--
+
+
+```r
+attributes(y)
+```
+
+```
+#&gt; $levels
+#&gt; [1] "walk"     "single"   "double"   "triple"   "home run"
+#&gt; 
+#&gt; $class
+#&gt; [1] "ordered" "factor"
+```
+
+```r
+str(y)
+```
+
+```
+#&gt;  Ord.factor w/ 5 levels "walk"&lt;"single"&lt;..: 1 2 3 4 5
+```
+
+---
+
+## Exercise
+
+Create a factor vector based on the vector of airport codes below. Try to do
+it without using function `factor()`.
+
+
+```r
+airports &lt;- c("RDU", "ABE", "DTW", "GRR", "RDU", "GRR", "GNV",
+             "JFK", "JFK", "SFO", "DTW")
+```
+
+Assume all the possible levels are 
+
+
+```r
+c("RDU", "ABE", "DTW", "GRR", "GNV", "JFK", "SFO")
+```
+
+*Hint*: Think about what type of object factors are built on.
+
+&lt;br/&gt;
+
+What if the possible levels are
+
+
+```r
+c("RDU", "ABE", "DTW", "GRR", "GNV", "JFK", "SFO", "GSO", "ORD", "PHL")
+```
+
+???
+
+## Solution
+.tiny[
+
+```r
+z &lt;- as.integer(c(1,2,3,4,1,4,5,6,6,7,3))
+attr(x = z, which = "levels") &lt;- c("RDU", "ABE", "DTW", 
+                                   "GRR", "GNV", "JFK", "SFO")
+attr(x = z, which = "class") &lt;- "factor"
+z
+```
+
+```
+#&gt;  [1] RDU ABE DTW GRR RDU GRR GNV JFK JFK SFO DTW
+#&gt; Levels: RDU ABE DTW GRR GNV JFK SFO
+```
+
+```r
+attributes(z)
+```
+
+```
+#&gt; $levels
+#&gt; [1] "RDU" "ABE" "DTW" "GRR" "GNV" "JFK" "SFO"
+#&gt; 
+#&gt; $class
+#&gt; [1] "factor"
+```
+]
+
+---
+
+## Matrices and arrays
+
+- Homogeneous in their type.
+
+- Matrices are populated based on column major ordering (use `byrow` argument
+  to change this).
+  
+- Arrays can have one, two or more dimensions.
+
+---
+
+## Data frames
+
+Data frames are built on top of lists with attributes: `names`, `row.names`,
+and `class`. Here the class is `data.frame`.
+
+
+```r
+typeof(longley)
+```
+
+```
+#&gt; [1] "list"
+```
+
+```r
+attributes(longley)
+```
+
+```
+#&gt; $names
+#&gt; [1] "GNP.deflator" "GNP"          "Unemployed"   "Armed.Forces" "Population"  
+#&gt; [6] "Year"         "Employed"    
+#&gt; 
+#&gt; $class
+#&gt; [1] "data.frame"
+#&gt; 
+#&gt; $row.names
+#&gt;  [1] 1947 1948 1949 1950 1951 1952 1953 1954 1955 1956 1957 1958 1959 1960 1961
+#&gt; [16] 1962
+```
+
+--
+
+Here `names` refers to variable names.
+
+---
+
+## Data frame characteristics
+
+- Data frames can be heterogeneous across columns.
+
+- Data frames are rectangular in structure (not always tidy).
+
+- They have column names and row names.
+
+- Data frames can be subset by name or position.
+
+---
+
+## Data frame creation by setting attributes
+
+Start with a list
+
+
+```r
+x &lt;- list(c("48501", "48507", "48505"),
+          c(3, 4, 21),
+          c(2, 1, 2))
+str(x)
+```
+
+```
+#&gt; List of 3
+#&gt;  $ : chr [1:3] "48501" "48507" "48505"
+#&gt;  $ : num [1:3] 3 4 21
+#&gt;  $ : num [1:3] 2 1 2
+```
+
+--
+
+Add attributes
+
+
+```r
+attributes(x) &lt;- list(class     = "data.frame",
+                      names     = c("zip", "lead_value", "time"),
+                      row.names = 1:3)
+```
+
+---
+
+Then we have a data frame
+
+
+```r
+x
+```
+
+```
+#&gt;     zip lead_value time
+#&gt; 1 48501          3    2
+#&gt; 2 48507          4    1
+#&gt; 3 48505         21    2
+```
+
+```r
+str(x)
+```
+
+```
+#&gt; 'data.frame':	3 obs. of  3 variables:
+#&gt;  $ zip       : chr  "48501" "48507" "48505"
+#&gt;  $ lead_value: num  3 4 21
+#&gt;  $ time      : num  2 1 2
+```
+
+Of course, we could have used function `data.frame()` to create our data
+frame object. There is also function `tidyverse::tibble()` - it creates a 
+tibble object. Similar to a data frame but with two addition class components.
+
+---
+
+## Length coercion
+
+Coercion is slightly different for data frames.
+
+.pull-left[
+
+
+
+```r
+data.frame(x = 1:3, y = c("a"))
+```
+
+```
+#&gt;   x y
+#&gt; 1 1 a
+#&gt; 2 2 a
+#&gt; 3 3 a
+```
+
+
+]
+
+.pull-right[
+
+
+```r
+data.frame(x = 1:3, 
+           y = c("a","b"))
+```
+
+```
+#&gt; Error in 
+#&gt; data.frame(x = 1:3, 
+#&gt;            y = c("a", "b")) : 
+#&gt; arguments imply differing number of 
+#&gt; rows: 3, 2
+```
+]
+
+If a shorter vector is not a multiple of the longest vector an error will
+occur.
+
+--
+
+&lt;br/&gt;
+
+What do you think will happen here?
+
+
+```r
+data.frame(num       = 1:6,
+           treatment = c(0, 10, 20),
+           type      = c("a", "b"))
+```
+
+---
+
+## Summary
+
+.small-text[
+
+| Data Structure | Built On              | Attribute(s)                  | Quick creation                 |
+|----------------|-----------------------|-------------------------------|--------------------------------|
+| Matrix, Array  | Atomic vector         | `dim`                         | `matrix()`, `array()`          |
+| Factor         | Atomic integer vector | `class`, `levels`             | `factor()`, `ordered()`        |
+| Date           | Atomic double vector  | `class`                       | `as.Date()`                    |
+| Date-times     | Atomic double vector  | `class`                       | `as.POSIXct()`, `as.POSIXlt()` |
+| Data frame     | List                  | `class`, `names`, `row.names` | `data.frame()`                 |
+
+]
+
+---
+
+class: inverse, center, middle
+
+# Subsetting
+
+---
+
+## Subsetting techniques
+
+R has three operators (functions) for subsetting:
+1. `[`
+2. `[[`
+3. `$`
+
+Which one you use will depend on the object you are working with, its
+attributes, and what you want as a result.
+
+We can subset with
+
+- integers
+- logicals
+- `NULL`, `NA`
+- character values
+
+---
+
+## Numeric (positive) subsetting
+
+**Indexing begins at 1, not 0.** 
+.tiny[
+
+```r
+x &lt;- c("NC", "SC", "VA", "TN")
+y &lt;- list(states  = x, rank = 1:4, message = "")
+```
+]
+
+--
+
+.tiny.pull-left[
+**Atomic vector**
+
+```r
+x[1]
+```
+
+```
+#&gt; [1] "NC"
+```
+
+```r
+x[c(1, 3)]
+```
+
+```
+#&gt; [1] "NC" "VA"
+```
+
+```r
+x[c(1:5)]
+```
+
+```
+#&gt; [1] "NC" "SC" "VA" "TN" NA
+```
+
+```r
+x[c(2.2, 3.9)]
+```
+
+```
+#&gt; [1] "SC" "VA"
+```
+
+]
+
+.tiny.pull-right[
+**List**
+
+```r
+str(y[1])
+```
+
+```
+#&gt; List of 1
+#&gt;  $ states: chr [1:4] "NC" "SC" "VA" "TN"
+```
+
+```r
+str(y[c(1, 3)])
+```
+
+```
+#&gt; List of 2
+#&gt;  $ states : chr [1:4] "NC" "SC" "VA" "TN"
+#&gt;  $ message: chr ""
+```
+
+```r
+str(y[c(1:4)])
+```
+
+```
+#&gt; List of 4
+#&gt;  $ states : chr [1:4] "NC" "SC" "VA" "TN"
+#&gt;  $ rank   : int [1:4] 1 2 3 4
+#&gt;  $ message: chr ""
+#&gt;  $ NA     : NULL
+```
+]
+
+---
+
+## Numeric (negative) subsetting
+
+.tiny[
+
+```r
+x &lt;- c("NC", "SC", "VA", "TN")
+y &lt;- list(states = x, rank = 1:4, message = "")
+```
+]
+
+.tiny.pull-left[
+**Atomic vector**
+
+```r
+x[-1]
+```
+
+```
+#&gt; [1] "SC" "VA" "TN"
+```
+
+```r
+x[-c(1, 3)]
+```
+
+```
+#&gt; [1] "SC" "TN"
+```
+
+```r
+x[c(-1, 3)]
+```
+
+```
+#&gt; Error in x[c(-1, 3)]: only 0's may be mixed with negative subscripts
+```
+
+```r
+*x[-c(2.2, 3.9)]
+```
+
+```
+#&gt; [1] "NC" "TN"
+```
+
+]
+
+.tiny.pull-right[
+**List**
+
+```r
+str(y[-1])
+```
+
+```
+#&gt; List of 2
+#&gt;  $ rank   : int [1:4] 1 2 3 4
+#&gt;  $ message: chr ""
+```
+
+```r
+str(y[-c(1, 3)])
+```
+
+```
+#&gt; List of 1
+#&gt;  $ rank: int [1:4] 1 2 3 4
+```
+
+```r
+str(y[c(-1, 3)])
+```
+
+```
+#&gt; Error in y[c(-1, 3)]: only 0's may be mixed with negative subscripts
+```
+
+```r
+*str(y[-c(2.2, 3.9)])
+```
+
+```
+#&gt; List of 2
+#&gt;  $ states : chr [1:4] "NC" "SC" "VA" "TN"
+#&gt;  $ message: chr ""
+```
+]
+
+---
+
+## Logical subsetting
+
+It returns elements that correspond to `TRUE` in the logical vector. The length 
+of the logical vector is expected to be of the same length as the vector 
+being subset.
+
+.tiny.pull-left[
+**Atomic vector**
+
+```r
+x &lt;- c(1, 4, 7, 12)
+x[c(TRUE, TRUE, FALSE, TRUE)]
+```
+
+```
+#&gt; [1]  1  4 12
+```
+
+```r
+x[c(TRUE, FALSE)]
+```
+
+```
+#&gt; [1] 1 7
+```
+
+```r
+x[x %% 2 == 0]
+```
+
+```
+#&gt; [1]  4 12
+```
+]
+
+.tiny.pull-right[
+**List**
+
+```r
+y &lt;- list(1, 4, 7, 12)
+str(y[c(TRUE, TRUE, FALSE, TRUE)])
+```
+
+```
+#&gt; List of 3
+#&gt;  $ : num 1
+#&gt;  $ : num 4
+#&gt;  $ : num 12
+```
+
+```r
+str(y[c(TRUE, FALSE)])
+```
+
+```
+#&gt; List of 2
+#&gt;  $ : num 1
+#&gt;  $ : num 7
+```
+
+```r
+str(y[y %% 2 == 0])
+```
+```
+#&gt; Error in y%%2: non-numeric 
+#&gt; argument to binary operator
+```
+]
+
+
+---
+
+## Empty subsetting
+
+It returns the original vector.
+
+
+```r
+x &lt;- c(1,4,7)
+x[]
+```
+
+```
+#&gt; [1] 1 4 7
+```
+
+```r
+y &lt;- list(1,4,7)
+str(y[])
+```
+
+```
+#&gt; List of 3
+#&gt;  $ : num 1
+#&gt;  $ : num 4
+#&gt;  $ : num 7
+```
+
+---
+
+## Zero subsetting
+
+Returns an empty vector of the same type as the vector being subset.
+
+
+```r
+x &lt;- c(1,4,7)
+y &lt;- list(1,4,7)
+```
+
+
+.pull-left[
+
+```r
+x[0]
+```
+
+```
+#&gt; numeric(0)
+```
+
+```r
+str(y[0])
+```
+
+```
+#&gt;  list()
+```
+]
+
+.pull-right[
+
+```r
+x[c(0,1)]
+```
+
+```
+#&gt; [1] 1
+```
+
+```r
+y[c(0,1)]
+```
+
+```
+#&gt; [[1]]
+#&gt; [1] 1
+```
+]
+
+---
+
+## Character subsetting
+
+If a vector has names, you can select elements whose names correspond to the 
+character vector.
+
+.pull-left[
+**Atomic vector**
+
+```r
+x  &lt;- c(a = 1, b = 4, c = 7)
+x["a"]
+```
+
+```
+#&gt; a 
+#&gt; 1
+```
+
+```r
+x[c("a", "a")]
+```
+
+```
+#&gt; a a 
+#&gt; 1 1
+```
+
+```r
+x[c("c", "b")]
+```
+
+```
+#&gt; c b 
+#&gt; 7 4
+```
+]
+
+.pull-right[
+**List**
+
+```r
+y &lt;- list(a = 1, b = 4, c = 7)
+str(y["a"])
+```
+
+```
+#&gt; List of 1
+#&gt;  $ a: num 1
+```
+
+```r
+str(y[c("a", "a")])
+```
+
+```
+#&gt; List of 2
+#&gt;  $ a: num 1
+#&gt;  $ a: num 1
+```
+
+```r
+str(y[c("c", "b")])
+```
+
+```
+#&gt; List of 2
+#&gt;  $ c: num 7
+#&gt;  $ b: num 4
+```
+]
+
+---
+
+## Missing and NULL subsetting
+
+.pull-left[
+**Atomic vector**
+
+```r
+x &lt;- c(1, 4, 7)
+x[NA]
+```
+
+```
+#&gt; [1] NA NA NA
+```
+
+```r
+x[NULL]
+```
+
+```
+#&gt; numeric(0)
+```
+
+```r
+x[c(1, NA)]
+```
+
+```
+#&gt; [1]  1 NA
+```
+]
+
+.pull-right[
+**List**
+
+```r
+y &lt;- list(1, 4, 7)
+str(y[NA])
+```
+
+```
+#&gt; List of 3
+#&gt;  $ : NULL
+#&gt;  $ : NULL
+#&gt;  $ : NULL
+```
+
+```r
+str(y[NULL])
+```
+
+```
+#&gt;  list()
+```
+
+```r
+str(y[c(1, NA)])
+```
+
+```
+#&gt; List of 2
+#&gt;  $ : num 1
+#&gt;  $ : NULL
+```
+]
+
+---
+
+## Exercise
+
+Consider the vectors `x` and `y` below.
+
+
+```r
+x &lt;- letters[1:5]
+y &lt;- list(i = 1:5, j = -3:3, k = rep(0, 4))
+```
+
+What is difference between subsetting with `[` and `[[` using integers? Try
+various indices.
+
+---
+
+
+## Understanding `[` vs. `[[` with lists
+
+.center[
+&lt;img src="images/shopping_cart.png" width="400" height="400"&gt;
+]
+
+--
+
+How do you get a shopping cart with only the cheese and bananas?
+
+--
+
+How do you get the bananas out of the cart?
+
+---
+
+## Using `$` for subsetting lists
+
+The `$` operator only works with named lists and works similar to `[[`.
+.tiny.pull-left[
+
+```r
+x &lt;- list(a   = 1:3, 
+          ab  = 4:6, 
+          abc = 7:9)
+x
+```
+
+```
+#&gt; $a
+#&gt; [1] 1 2 3
+#&gt; 
+#&gt; $ab
+#&gt; [1] 4 5 6
+#&gt; 
+#&gt; $abc
+#&gt; [1] 7 8 9
+```
+
+```r
+x$a
+```
+
+```
+#&gt; [1] 1 2 3
+```
+
+```r
+x$ab
+```
+
+```
+#&gt; [1] 4 5 6
+```
+]
+
+.tiny.pull-right[
+
+```r
+y &lt;- list(a    = 1:3, 
+          abc  = 4:6, 
+          abde = 7:9)
+y
+```
+
+```
+#&gt; $a
+#&gt; [1] 1 2 3
+#&gt; 
+#&gt; $abc
+#&gt; [1] 4 5 6
+#&gt; 
+#&gt; $abde
+#&gt; [1] 7 8 9
+```
+
+```r
+y$a
+```
+
+```
+#&gt; [1] 1 2 3
+```
+
+```r
+*y$abd
+```
+
+```
+#&gt; [1] 7 8 9
+```
+]
+
+---
+
+## References
+
+- Wickham, H. (2020). Advanced R. https://adv-r.hadley.nz/
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
