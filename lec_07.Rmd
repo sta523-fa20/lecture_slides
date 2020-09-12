@@ -1,0 +1,715 @@
+---
+title: "Data reshaping with tidyr and functionals with purrr"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [Sections 9.1 - 9.4](https://adv-r.hadley.nz/functionals.html), Advanced R
+- [Chapter 12](https://r4ds.had.co.nz/tidy-data.html), R for Data Science
+- `tidyr` [vignette](https://tidyr.tidyverse.org/articles/tidy-data.html)
+- See `vignette("pivot")` in package `tidyr`
+- `purrr` [tutorial](https://jennybc.github.io/purrr-tutorial/index.html)
+- `purrr` [cheat sheet](https://github.com/rstudio/cheatsheets/raw/master/purrr.pdf)
+
+---
+
+class: inverse, center, middle
+
+# `tidyr`
+
+---
+
+## Tidy data
+
+![](images/tidy.png)
+
+*Source*: R for Data Science, https://r4ds.had.co.nz
+
+---
+
+## Getting started
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+congress <- read_csv("http://www2.stat.duke.edu/~sms185/data/politics/congress.csv")
+congress
+```
+
+---
+
+## Smaller data set
+
+```{r}
+senate_1913 <- congress %>% 
+  select(year_start, year_end, contains("senate"), -total_senate) %>% 
+  arrange(year_start) %>% 
+  slice(1)
+
+senate_1913
+```
+
+---
+
+## Wide to long
+
+```{r echo=FALSE}
+senate_1913
+```
+
+<br/>
+--
+
+```{r}
+senate_1913_long <- senate_1913 %>% 
+  pivot_longer(cols = dem_senate:vacant_senate, 
+               names_to = "party", values_to = "seats")
+senate_1913_long
+```
+
+---
+
+## Long to wide
+
+```{r echo=FALSE}
+senate_1913_long
+```
+
+<br/>
+--
+
+```{r}
+senate_1913_long %>% 
+  pivot_wider(names_from = party, values_from = seats)
+```
+
+---
+
+## `pivot_*()`
+
+Lengthen the data (increase the number of rows, decrease the number of columns)
+
+```{r eval=FALSE}
+pivot_longer(data, cols, names_to = "col_name", values_to = "col_values")
+```
+
+--
+
+<br/>
+
+Widen the data (decrease the number of rows, increase the number of columns)
+
+```{r eval=FALSE}
+pivot_wider(names_from = name_of_var, values_to = var_with_values)
+```
+
+---
+
+## Exercise
+
+Consider a tibble of data filtered from `world_bank_pop`. This dataset is
+included in package `tidyr`.
+
+```{r}
+usa_pop <- world_bank_pop %>% 
+  filter(country == "USA")
+```
+
+Tidy `usa_pop` so it looks like the tibble below. 
+See `?world_bank_pop` for a description of the variables and their values.
+
+<br/>
+
+```{r echo=FALSE}
+usa_pop %>% 
+  pivot_longer(cols = `2000`:`2017`, names_to = "year", values_to = "value") %>% 
+  pivot_wider(names_from = indicator, values_from = value) %>% 
+  janitor::clean_names() %>% 
+  slice(1:6)
+```
+
+
+???
+
+## Solution
+
+.solution[
+
+```{r}
+usa_pop %>% 
+  pivot_longer(cols = `2000`:`2017`, names_to = "year", values_to = "value") %>% 
+  pivot_wider(names_from = indicator, values_from = value) %>% 
+  janitor::clean_names()
+```
+
+]
+
+---
+
+## Pivoting
+
+Two older, but related, functions in `tidyr` that you may have encountered
+before are `gather()` and `spread()`.
+
+- Function `gather()` is similar to function `pivot_longer()` in that it
+  "lengthens" data, increasing the number of rows and 
+  decreasing the number of columns.
+
+- Function `spread()` is similar to function `pivot_wider()` in that it makes 
+  a dataset wider by increasing the number of columns and decreasing the number 
+  of rows.
+
+<br/>
+
+Check out the 
+[vignette](https://tidyr.tidyverse.org/articles/pivot.html#introduction) for 
+more examples on pivoting data frames.
+
+---
+
+## Unite columns
+
+```{r echo=FALSE}
+senate_1913_long
+```
+
+<br/>
+--
+
+```{r}
+senate_1913_long %>% 
+  unite(col = "term", year_start:year_end, sep = "-")
+```
+
+--
+
+```{r eval=FALSE}
+unite(data, col, ..., sep = "_", remove = TRUE, na.rm = FALSE)
+```
+
+
+---
+
+## Separate columns
+
+```{r echo=FALSE}
+senate_1913_long
+```
+
+--
+
+```{r}
+senate_1913_long %>% 
+  separate(col = party, into = c("party", "leg_branch"), sep = "_")
+```
+
+--
+
+```{r eval=FALSE}
+separate(data, col, into, sep = "[^[:alnum:]]+", remove = TRUE,
+  convert = FALSE, extra = "warn", fill = "warn", ...)
+```
+
+???
+
+Separator between columns.
+
+If character, is interpreted as a regular expression. 
+The default value is a regular expression that matches any sequence of 
+non-alphanumeric values.
+
+If numeric, interpreted as positions to split at. Positive values start at 1 at 
+the far-left of the string; negative value start at -1 at the far-right of the 
+string. The length of sep should be one less than into.
+
+---
+
+class: inverse, center, middle
+
+# Functionals
+
+---
+
+## What is a functional?
+
+A functional is a function that takes a function as an input and returns
+a vector as output.
+
+<br/>
+
+```{r}
+fixed_point <- function(f, x0, tol = .0001, ...) {
+  y <- f(x0, ...)
+  x_new <- x0
+  
+  while (abs(y - x_new) > tol) {
+    x_new <- y
+    y <- f(x_new, ...)
+  }
+  
+  return(x_new)
+}
+```
+
+<br/>
+
+**Argument `f` takes in a function name.**
+
+---
+
+```{r}
+fixed_point(cos, 1)
+fixed_point(sin, 0)
+fixed_point(f = sqrt, x0 = .01, tol = .000000001)
+```
+
+---
+
+## Functional programming
+
+A functional is one property of first-class functions and part of what makes a 
+language a functional programming language.
+
+<center>
+<img src="images/functional_programming.png">
+</center>
+
+---
+
+class: inverse, center, middle
+
+# Apply functions
+
+---
+
+
+## `[a-z]pply()` functions
+
+The apply functions are a collection of tools for functional programming in R, 
+they are variations of the `map` function found in many other languages.
+
+---
+
+## `lapply()`
+
+Usage: `lapply(X, FUN, ...)`
+
+`lapply()` returns a list of the same length as `X`, each element of which is 
+the result of applying `FUN` to the corresponding element of `X`.
+
+<br/>
+
+.pull-left[
+```{r}
+lapply(1:8, sqrt) %>% 
+  str()
+```
+]
+
+.pull-right[
+```{r}
+lapply(1:8, function(x) (x+1)^2) %>% 
+  str()
+```
+]
+
+---
+
+```{r}
+lapply(1:8, function(x, pow) x ^ pow, 3) %>%
+  str()
+```
+
+--
+
+```{r}
+pow <- function(x, pow) x ^ pow
+lapply(1:8, pow, x = 2) %>%
+  str()
+```
+
+---
+
+## `sapply()`
+
+Usage: `sapply(X, FUN, ..., simplify = TRUE, USE.NAMES = TRUE)`
+
+`sapply()` is a *user-friendly* version and wrapper of `lapply`, it is a 
+*simplifying* version of lapply. Whenever possible it will return a vector, 
+matrix, or an array.
+
+<br/>
+
+```{r}
+sapply(1:8, sqrt) %>% 
+  round(2)
+sapply(1:8, function(x) (x + 1)^2)
+```
+
+---
+
+```{r}
+sapply(1:8, function(x) c(x, x^2, x^3, x^4))
+sapply(1:8, function(x) list(x, x^2, x^3, x^4))
+```
+
+---
+
+```{r}
+sapply(2:6, seq)
+```
+
+**Why do we have a list?**
+
+<br/>
+
+--
+
+```{r}
+sapply(2:6, seq, from = 1, length.out = 4)
+```
+
+---
+
+## `[ls]apply()` and data frames
+
+We can use these functions with data frames, the key is to remember that a
+data frame is just a fancy list.
+
+```{r}
+df <-  data.frame(a = 1:6, b = letters[1:6], c = c(TRUE,FALSE))
+lapply(df, class) %>% str()
+sapply(df, class)
+```
+
+---
+
+## More in the family
+
+- `apply(X, MARGIN, FUN, ...)` - applies a function over the rows or columns 
+  of a data frame, matrix, or array
+
+- `vapply(X, FUN, FUN.VALUE, ..., USE.NAMES = TRUE)` - is similar to `sapply()`, 
+  but has a enforced return type and size
+
+- `mapply(FUN, ..., MoreArgs = NULL, SIMPLIFY = TRUE, USE.NAMES = TRUE)` -  like
+  `sapply()` but will iterate over multiple vectors at the same time.
+
+- `rapply(object, f, classes = "ANY", deflt = NULL, how = c("unlist", "replace", "list"), ...)` - a recursive version of `lapply()`, behavior depends largely on the `how` argument
+
+- `eapply(env, FUN, ..., all.names = FALSE, USE.NAMES = TRUE)` -  apply a 
+  function over an environment.
+
+---
+
+## Exercise
+
+Using `sw_people` in package `repurrrsive`, extract the name of all 
+characters using:
+
+- a for loop,
+
+- an apply function.
+
+.tiny[
+```{r}
+library(repurrrsive)
+str(sw_people[[1]])
+```
+]
+
+*Hint:* The `[` and `[[` are functions.
+
+???
+
+## Solutions
+
+```{r}
+out <- character(length = length(sw_people))
+
+for (i in seq_along(sw_people)) {
+  out[i] <- sw_people[[i]]$name
+}
+```
+
+```{r}
+s_out <- sapply(sw_people, `[[`, "name")
+```
+
+---
+
+class: inverse, center, middle
+
+# `purrr`
+
+---
+
+## Why `purrr`?
+
+- Member of the `tidyverse` package
+
+- Improves the functional programming tools in R
+
+- The `map()` family of functions can be used to replace loops 
+  and `[a-z]pply()`
+  
+    - Consistent output
+    
+    - Easier to read and write
+
+---
+
+## Map functions
+
+Basic functions for looping over an object and returning a value 
+(of a specific type) - replacement for `lapply()`/`sapply()`/`vapply()`.
+
+| Map variant              | Description                            |
+|--------------------------|----------------------------------------|
+| `map()`                  | returns a list                         |
+| `map_lgl()`              | returns a logical vector               |
+| `map_int()`              | returns a integer vector               |
+| `map_dbl()`              | returns a double vector                |
+| `map_chr()`              | returns a character vector             |
+| `map_df()` / `map_dfr()` | returns a data frame by row binding    |
+| `map_dfc()`              | returns a data frame by column binding |
+
+<br/>
+
+All have leading arguments `.x` and `.f`.
+
+---
+
+## `map_*()` is strict
+
+```{r}
+x <- list(1L:5L, c(-2, .2, -20), c(pi, sqrt(2), 7))
+```
+
+
+```{r error=TRUE}
+map_dbl(x, mean)
+map_chr(x, mean)
+map_lgl(x, mean)
+map_int(x, mean)
+```
+
+---
+
+```{r}
+x <- list(1L:5L, c(-2, .2, -20), c(pi, sqrt(2), 7))
+```
+
+--
+
+```{r error=TRUE}
+map_dbl(x, `[`, 1)
+map_chr(x, `[`, 3)
+map_lgl(x, `[`, 1)
+map_int(x, `[`, 1)
+```
+
+---
+
+## Flexibility in `.f`
+
+Argument `.f` in `map()` and `map_*()` can take a
+
+- function,
+
+- formula (one sided) / anonymous function, or a
+
+- vector.
+
+    - character vector
+    - numeric vector
+    - list
+
+---
+
+## Examples
+
+
+.pull-left[
+Using `map_*()`
+.tiny[
+```{r}
+map_dbl(1:5, ~ . ^ .)
+map_dbl(1:5, ~ .x ^ .x)
+map2_dbl(1:5, -1:-5,  ~ .y ^ .x)
+  
+pmap_dbl(data.frame(1:5, 1:5, 1:5), 
+         ~..1 + ..2 + ..3)
+```
+]
+]
+
+.pull-right[
+Using Base R
+.tiny[
+```{r}
+sapply(1:5, function(x) x ^ x)
+sapply(1:5, function(x) x ^ x)
+sapply(1:5, function(x, y) y ^ x, y = -1:-5) %>% 
+  diag()
+sapply(1:5, function(x, y, z) x + y + z, y = 1:5, z = 1:5) %>% 
+  diag()
+```
+]
+]
+
+
+---
+
+## More examples
+
+Consider `gh_users` from package `repurrrsive`.
+
+```{r}
+library(repurrrsive)
+str(gh_users, max.level = 1)
+```
+
+---
+.tiny[
+```{r}
+str(gh_users[[1]], max.level = 1)
+```
+]
+
+---
+
+```{r}
+map_chr(gh_users, "login")
+map_chr(gh_users, 1)
+```
+
+--
+
+```{r error=TRUE}
+map_chr(gh_users, c(1, 2))
+```
+
+---
+
+```{r}
+map(gh_users, `[`, c(1, 2)) %>% 
+  str()
+```
+
+```{r error=TRUE}
+map(gh_users, `[[`, c(1, 2)) %>% 
+  str()
+```
+
+---
+
+```{r}
+map_dbl(gh_users, list(28, 1))
+map_dbl(gh_users, list("following", 1))
+```
+
+--
+
+<br/>
+
+To make the above more clear:
+
+```{r}
+my_list <- list(
+  list(x = 1:10, y = 6, z = c(9, 0)),
+  list(x = 1:10, y = 6, z = c(-3, 2))
+)
+map_chr(my_list, list("z", 2))
+map_chr(my_list, list(3, 1))
+```
+
+---
+
+```{r}
+map_df(gh_users, `[`, c(1, 2))
+```
+
+
+```{r}
+map_df(gh_users, `[`, c("name", "type", "location"))
+```
+
+---
+
+## `map()` variants
+
+- `walk()` - returns nothing, call function exclusively for its side effects
+
+- `modify()` - returns the same type as the input object, useful for data frames
+    ```{r}
+    df <- data_frame(x = 1:3, y = -1:-3)
+    modify(df, ~ .x ^ 3)
+    ```
+    
+- `map2()` and `pmap()` to vary two and n inputs, respectively
+
+- `imap()` iterate over indices and values
+
+
+---
+
+## Exercise
+
+Use `mtcars` and a single map or map variant to
+
+- get the type of each variable,
+
+- get the fourth row such that result is a character vector,
+
+- compute the mean of each variable, and
+
+- compute the mean and median for each variable such that the result is a
+  data frame with the mean values in row 1 and the median values in row 2.
+  
+???
+
+## Solutions
+
+```{r}
+map_chr(mtcars, typeof)
+map_chr(mtcars, 4)
+map_dbl(mtcars, mean)
+map_df(mtcars, ~ c(mean(.), median(.)))
+```
+
+---
+
+## References
+
+1. Grolemund, G., & Wickham, H. (2020). R for Data Science.         
+   https://r4ds.had.co.nz/
+
+2. Wickham, H. (2020). Advanced R. https://adv-r.hadley.nz/
+

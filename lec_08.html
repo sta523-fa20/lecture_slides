@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Statistical graphics with ggplot2</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Statistical graphics with <code>ggplot2</code>
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [Chapter 3](https://r4ds.had.co.nz/data-visualisation.html), R for Data Science
+- `ggplot2` [Reference](https://ggplot2.tidyverse.org/reference/index.html)
+- `ggplot2` [cheat sheet](https://github.com/rstudio/cheatsheets/raw/master/data-visualization-2.1.pdf)
+- [color brewer 2](http://colorbrewer2.org/)
+
+
+---
+
+## `ggplot2`
+
+- `ggplot2` is a plotting system for R, based on the grammar of graphics
+
+  - using the good parts of base and lattice 
+
+- It takes care of many of the fiddly details that make plotting a hassle 
+  
+  - such as drawing legends and faceting
+  - particularly helpful for plotting multivariate data
+  
+Package `ggplot2` is available in package `tidyverse`. Let's load that now.
+
+
+```r
+library(tidyverse)
+```
+
+---
+
+## The Grammar of Graphics
+
+- Visualization concept created by Leland Wilkinson (1999)
+    - to define the basic elements of a statistical graphic 
+
+- Adapted for R by Wickham (2009)
+    - consistent and compact syntax to describe statistical graphics
+    - highly modular as it breaks up graphs into semantic components 
+
+- It is not meant as a guide to which graph to use and how to best convey your 
+  data (more on that later).
+
+
+---
+
+## Today's data: MLB
+
+
+```r
+teams &lt;- read_csv("http://www2.stat.duke.edu/~sms185/data/mlb/teams.csv")
+```
+
+Object `teams` is a data frame that contains yearly statistics and standings
+for MLB teams from 2009 to 2018.
+
+The data has 300 rows and 56 variables.
+
+---
+
+.tiny[
+
+```r
+teams
+```
+
+```
+#&gt; # A tibble: 300 x 56
+#&gt;    yearID lgID  teamID franchID divID  Rank     G Ghome     W     L DivWin WCWin
+#&gt;     &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;  &lt;chr&gt;    &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;  &lt;chr&gt;
+#&gt;  1   2009 NL    ARI    ARI      W         5   162    81    70    92 N      N    
+#&gt;  2   2009 NL    ATL    ATL      E         3   162    81    86    76 N      N    
+#&gt;  3   2009 AL    BAL    BAL      E         5   162    81    64    98 N      N    
+#&gt;  4   2009 AL    BOS    BOS      E         2   162    81    95    67 N      Y    
+#&gt;  5   2009 AL    CHA    CHW      C         3   162    81    79    83 N      N    
+#&gt;  6   2009 NL    CHN    CHC      C         2   161    80    83    78 N      N    
+#&gt;  7   2009 NL    CIN    CIN      C         4   162    81    78    84 N      N    
+#&gt;  8   2009 AL    CLE    CLE      C         4   162    81    65    97 N      N    
+#&gt;  9   2009 NL    COL    COL      W         2   162    81    92    70 N      Y    
+#&gt; 10   2009 AL    DET    DET      C         2   163    81    86    77 N      N    
+#&gt; # … with 290 more rows, and 44 more variables: LgWin &lt;chr&gt;, WSWin &lt;chr&gt;,
+#&gt; #   R &lt;dbl&gt;, AB &lt;dbl&gt;, H &lt;dbl&gt;, X2B &lt;dbl&gt;, X3B &lt;dbl&gt;, HR &lt;dbl&gt;, BB &lt;dbl&gt;,
+#&gt; #   SO &lt;dbl&gt;, SB &lt;dbl&gt;, CS &lt;dbl&gt;, HBP &lt;dbl&gt;, SF &lt;dbl&gt;, RA &lt;dbl&gt;, ER &lt;dbl&gt;,
+#&gt; #   ERA &lt;dbl&gt;, CG &lt;dbl&gt;, SHO &lt;dbl&gt;, SV &lt;dbl&gt;, IPouts &lt;dbl&gt;, HA &lt;dbl&gt;,
+#&gt; #   HRA &lt;dbl&gt;, BBA &lt;dbl&gt;, SOA &lt;dbl&gt;, E &lt;dbl&gt;, DP &lt;dbl&gt;, FP &lt;dbl&gt;, name &lt;chr&gt;,
+#&gt; #   park &lt;chr&gt;, attendance &lt;dbl&gt;, BPF &lt;dbl&gt;, PPF &lt;dbl&gt;, teamIDBR &lt;chr&gt;,
+#&gt; #   teamIDlahman45 &lt;chr&gt;, teamIDretro &lt;chr&gt;, TB &lt;dbl&gt;, WinPct &lt;dbl&gt;, rpg &lt;dbl&gt;,
+#&gt; #   hrpg &lt;dbl&gt;, tbpg &lt;dbl&gt;, kpg &lt;dbl&gt;, k2bb &lt;dbl&gt;, whip &lt;dbl&gt;
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Plot comparison
+
+---
+
+## Using `ggplot()`
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-5-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Using `plot()`
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-6-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Code comparison
+
+Using `ggplot()`
+
+
+```r
+ggplot(teams, mapping = aes(x = R - RA, y = WinPct, color = DivWin)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Win Percentage", y = "Run Differential")
+```
+
+--
+
+Using `plot()`
+
+
+```r
+teams$RD &lt;- teams$R - teams$RA
+teams_div &lt;- teams[teams$DivWin == "Y", ]
+teams_no_div &lt;- teams[teams$DivWin == "N", ]
+
+mod1 &lt;- lm(WinPct ~ RD, data = teams_div)
+mod2 &lt;- lm(WinPct ~ RD, data = teams_no_div)
+
+plot(x = (teams$R - teams$RA), y = teams$WinPct,
+     col = adjustcolor(as.integer(factor(teams$DivWin))),
+     pch = 16, 
+     xlab = "Run Differential",
+     ylab = "Win Percentage")
+abline(mod1, col = 2, lwd=2)
+abline(mod2, col = 1, lwd=2)
+```
+
+---
+
+class: inverse, center, middle
+
+# What's in a `ggplot()`?
+
+---
+
+## Terminology
+
+A statistical graphic is a...
+
+- mapping of **data**
+
+- which may be **statistically transformed** (summarized, log-transformed, etc.)
+
+- to **aesthetic attributes** (color, size, xy-position, etc.)
+
+- using **geometric objects** (points, lines, bars, etc.)
+
+- and mapped onto a specific **facet** and **coordinate system.**
+
+---
+
+## What do I "need"?
+
+1) Some data (preferably in a data frame)
+
+
+```r
+*ggplot(data = teams)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-9-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+2) A set of variable mappings
+
+
+```r
+*ggplot(data = teams, mapping = aes(x = attendance / 1000, y = W))
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-10-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+3) A geom with arguments, or multiple geoms with arguments connected by `+`
+
+
+```r
+ggplot(data = teams, mapping = aes(x = attendance / 1000, y = W)) +
+* geom_point(color = "blue")
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-11-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+4) Some options on changing scales or adding facets
+
+
+```r
+ggplot(data = teams, mapping = aes(x = attendance / 1000, y = W)) +
+  geom_point(color = "blue") +
+* facet_wrap(~yearID, nrow = 2)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-12-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+5) Some labels
+
+
+```r
+ggplot(data = teams, mapping = aes(x = attendance / 1000, y = W)) +
+  geom_point(color = "blue") +
+  facet_wrap(~yearID, nrow = 2) +
+* labs(x = "Attendance", y = "Wins", caption = "Attendance in thousands")
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-13-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+6) Other options
+
+
+```r
+ggplot(data = teams, mapping = aes(x = attendance / 1000, y = W)) +
+  geom_point(color = "blue") +
+  facet_wrap(~yearID, nrow = 2) +
+  labs(x = "Attendance", y = "Wins", caption = "Attendance in thousands") +
+* theme_bw(base_size = 16) +
+* theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Anatomy of a ggplot
+
+
+```r
+ggplot(
+  data = [dataframe],
+  
+  aes(
+    x = [var_x], y = [var_y], 
+    color = [var_for_color], 
+    fill  = [var_for_fill], 
+    shape = [var_for_shape],
+    size  = [var_for_size],
+    alpha = [var_for_alpha],
+    ...#other aesthetics
+  )
+) +
+  geom_&lt;some_geom&gt;([geom_arguments]) +
+  ... # other geoms
+  scale_&lt;some_axis&gt;_&lt;some_scale&gt;() +
+  facet_&lt;some_facet&gt;([formula]) +
+  ... # other options
+```
+
+To visualize multivariate relationships we can add variables to our 
+visualization by specifying aesthetics: color, size, shape, linetype, 
+alpha, or fill; we can also add facets based on variable levels.
+
+---
+
+class: inverse, center, middle
+
+# Scatter plots
+
+---
+
+## Base plot
+
+.tiny[
+
+```r
+ggplot(data = teams, mapping = aes(x = (R ^ 2 / (R ^ 2 + RA ^2 )), y = WinPct)) +
+* geom_point()
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-16-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Altering aesthetic color
+
+.tiny[
+
+```r
+ggplot(data = teams, mapping = aes(x = (R ^ 2 / (R ^ 2 + RA ^2 )), y = WinPct)) +
+* geom_point(color = "#E81828")
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-17-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Altering aesthetic color
+
+.tiny[
+
+```r
+*ggplot(data = teams, mapping = aes(x = (R ^ 2 / (R ^ 2 + RA ^2 )), y = WinPct, color = lgID)) +
+  geom_point(show.legend = FALSE)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-18-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Altering aesthetic color
+
+.tiny[
+
+```r
+ggplot(data = teams, mapping = aes(x = (R ^ 2 / (R ^ 2 + RA ^2 )), y = WinPct, color = lgID)) +
+* geom_point()
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-19-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Base plot
+
+.tiny[
+
+```r
+ggplot(data = teams[teams$yearID == 2018, ], mapping = aes(x = BB + H, y = SO)) +
+  geom_point()
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-20-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Altering multiple aesthetics
+
+.tiny[
+
+```r
+ggplot(data = teams[teams$yearID == 2018, ], mapping = aes(x = BB + H, y = SO)) +
+* geom_point(size = 3, shape = 2, color = "#E81828")
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-21-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Altering multiple aesthetics
+
+.tiny[
+
+```r
+ggplot(data = teams[teams$yearID == 2018, ], mapping = aes(x = BB + H, y = SO, 
+*                    color = factor(Rank), shape = factor(Rank))) +
+  geom_point(size = 4, alpha = .8, show.legend = FALSE)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-22-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Altering multiple aesthetics
+
+.tiny[
+
+```r
+ggplot(data = teams[teams$yearID == 2018, ], mapping = aes(x = BB + H, y = SO, 
+*                    color = factor(Rank), shape = factor(Rank))) +
+  geom_point(size = 4, alpha = .8)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-23-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Inside or outside `aes()`?
+
+When does an aesthetic go inside function `aes()`?
+
+- If you want an aesthetic to be reflective of a variable's values, it must
+  go inside aes.
+
+- If you want to set an aesthetic manually and not have it convey
+  information about a variable, use the aesthetic's name outside of aes
+  and set it to your desired value.
+  
+
+Aesthetics for continuous and discrete variables are measured on
+continuous and discrete scales, respectively.
+
+---
+
+## Faceting
+
+.tiny[
+
+```r
+ggplot(data = teams, mapping = aes(x = R, y = WinPct, color = DivWin)) +
+  geom_point(alpha = .8) +
+* facet_grid(lgID~ .)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-24-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Faceting
+
+.tiny[
+
+```r
+ggplot(data = teams, mapping = aes(x = R, y = WinPct, color = DivWin)) +
+  geom_point(alpha = .8) +
+* facet_grid(. ~lgID)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-25-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Faceting
+
+.tiny[
+
+```r
+ggplot(data = teams, mapping = aes(x = R, y = WinPct, color = DivWin)) +
+  geom_point(alpha = .8) +
+* facet_grid(divID~lgID)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-26-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Faceting
+
+.tiny[
+
+```r
+ggplot(data = teams, mapping = aes(x = R, y = WinPct, color = DivWin)) +
+  geom_point(alpha = .8) +
+* facet_wrap(~yearID)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-27-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Facet grid or wrap?
+
+- Use `facet_wrap()` to wrap a one dimensional sequence into two dimensional
+  panels.
+  
+- Use `facet_grid()` when you have two discrete variables and you want panels
+  of plots to represent all possible combinations.
+  
+---
+
+## Exercise
+
+Let's explore the relationship between runs and strikeouts for division
+winners and non-division winners. 
+Use tibble `teams` to re-create the plot below.
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-28-1.png" style="display: block; margin: auto;" /&gt;
+
+&lt;br/&gt;
+
+**How can we improve this visualization?**
+
+???
+
+.tiny[
+
+```r
+ggplot(data = teams, mapping = aes(x = SO, y = R, color = factor(DivWin))) +
+  geom_point(size = 3, alpha = .8) +
+  facet_wrap(~yearID, nrow = 2) +
+  labs(x = "Strike outs", y = "Runs", color = "Division winner")
+```
+]
+
+---
+
+## A more effective visualization
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-30-1.png" style="display: block; margin: auto;" /&gt;
+
+???
+
+
+```r
+ggplot(data = teams, mapping = aes(x = SO, y = R, color = factor(DivWin))) +
+  geom_point(size = 2, alpha = .8) +
+  geom_hline(yintercept = 750, lty = 2, alpha = .5, color = "blue") +
+  geom_vline(xintercept = 1250, lty = 2, alpha = .5, color = "blue") +
+  facet_wrap(~yearID, nrow = 2) +
+  labs(x = "Strike outs", y = "Runs", color = "Division winner",
+       title = "Division winners generally score more runs",
+       subtitle = "and have fewer strike outs") +
+  scale_color_manual(values = c("grey", "red")) +
+  scale_x_continuous(limits = c(750, 1750), breaks = seq(900, 1700, 350),
+                     labels = seq(900, 1700, 350)) +
+  scale_y_continuous(limits = c(500, 1000), breaks = seq(500, 1000, 100),
+                     labels = seq(500, 1000, 100)) +
+  theme_bw(base_size = 16) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+class: inverse, center, middle
+
+# Other geoms
+
+---
+
+## Caution
+
+- The following plots are not well-polished. They are designed to demonstrate
+  the various geoms and options that exist within `ggplot2`.
+  
+- You should always have a well-labelled and polished visualization if it will
+  be seen by an outside audience.
+
+---
+
+## Box plots
+
+.tiny[
+
+```r
+ggplot(teams, mapping = aes(x = factor(yearID), y = kpg)) +
+* geom_boxplot(color = "#E81828", fill = "#002D72", alpha = .7)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-32-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Box plots: flipped coordinates
+
+.tiny[
+
+```r
+ggplot(teams, mapping = aes(x = factor(yearID), y = kpg)) +
+  geom_boxplot(color = "#E81828", fill = "#002D72", alpha = .7) +
+* coord_flip()
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-33-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Box plots: custom colors
+
+.tiny[
+
+```r
+ggplot(teams, mapping = aes(x = factor(yearID), y = kpg, fill = lgID)) +
+  geom_boxplot(color = "grey", alpha = .7) +
+* scale_fill_manual(values = c("#E81828", "#002D72")) +
+  coord_flip() +
+* theme_bw()
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-34-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Bar plots
+
+.tiny[
+
+```r
+ggplot(teams[teams$yearID == 2018, ], mapping = aes(y = W, x = franchID)) +
+  geom_bar(stat = "identity")
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-35-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Bar plots: angled text
+
+.tiny[
+
+```r
+ggplot(teams[teams$yearID == 2018, ], mapping = aes(y = W, x = franchID)) +
+  geom_bar(stat = "identity") +
+* theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-36-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Bar plots: sorted
+
+.tiny[
+
+```r
+*ggplot(teams[teams$yearID == 2018, ], mapping = aes(y = W, x = reorder(franchID, -W))) +
+  geom_bar(stat = "identity", color = "#E81828", fill = "#002D72", alpha = .7) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-37-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Bar plots: granular scale
+
+.tiny[
+
+```r
+ggplot(teams[teams$yearID == 2018, ], mapping = aes(y = W, x = reorder(franchID, -W))) +
+  geom_bar(stat = "identity", color = "#E81828", fill = "#002D72", alpha = .7) +
+* scale_y_continuous(breaks = seq(0, 120, 15), labels = seq(0, 120, 15), limits = c(0, 120)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-38-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Histograms
+
+.tiny[
+
+```r
+ggplot(teams, mapping = aes(x = WinPct)) +
+  geom_histogram(binwidth = .025, fill = "#E81828", color = "#002D72", alpha = .7)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-39-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Density plots
+
+.tiny[
+
+```r
+ggplot(teams, mapping = aes(x = WinPct)) +
+  geom_density(fill = "#E81828", color = "#002D72", alpha = .7)
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-40-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Density plots: custom colors
+
+.tiny[
+
+```r
+ggplot(teams, mapping = aes(x = WinPct, fill = lgID)) +
+  geom_density(alpha = .5) +
+* scale_fill_manual(values = c("#E81828", "#002D72"))
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-41-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Heat maps
+
+.tiny[
+
+```r
+ggplot(teams[teams$yearID == 2018, ], mapping = aes(x = Rank, y = divID, fill = RD)) +
+* geom_raster()
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-42-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Heat maps: color palette
+
+.tiny[
+
+```r
+ggplot(teams[teams$yearID == 2018, ], mapping = aes(x = Rank, y = divID, fill = RD)) +
+  geom_raster() +
+* scale_fill_gradientn(colours = terrain.colors(10))
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-43-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Heat maps: color palette
+
+.tiny[
+
+```r
+ggplot(teams[teams$yearID == 2018, ], mapping = aes(x = Rank, y = divID, fill = RD)) +
+  geom_raster() +
+* scale_fill_gradient(low = "#fef0d9", high = "#b30000")
+```
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-44-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Choosing colors
+
+[Color Brewer 2](http://colorbrewer2.org/)
+
+&lt;img src="images/color_brewer.png"&gt;
+
+---
+
+## Effective visualization tips
+  
+- Provide a title that tells a story.
+  
+- Strive to have your visualization function in a closed environment.
+
+- Be mindful of color and scale choices.
+
+- Generally, color is better than shape to make things "pop".
+
+- Not everything has to have a color, shape, transparency, etc.
+
+- Add labels and annotation.
+
+- Use your visualization to support your story.
+
+- Use chunk options `fig.width`, `fig.height`, `fig.align`, and `fig.show` to 
+  manipulate your plot's size and placement.
+
+---
+
+
+class: inverse, center, middle
+
+# Exercise
+
+---
+
+## Energy data
+
+.tiny[
+
+```r
+energy &lt;- read_csv("http://www2.stat.duke.edu/~sms185/data/energy/energy.csv")
+```
+]
+
+.tiny[
+
+```r
+energy
+```
+
+```
+#&gt; # A tibble: 105 x 6
+#&gt;    MWhperDay name            type  location    note                          boe
+#&gt;        &lt;dbl&gt; &lt;chr&gt;           &lt;chr&gt; &lt;chr&gt;       &lt;chr&gt;                       &lt;dbl&gt;
+#&gt;  1         3 Chernobyl Solar Solar Ukraine     "On the site of the former…     0
+#&gt;  2       637 Solarpark Meuro Solar Germany      &lt;NA&gt;                          55
+#&gt;  3       920 Tesla's propos… Solar South Aust… "50,000 homes with solar p…    79
+#&gt;  4      1280 Quaid-e-Azam    Solar Pakistan    "Named in honor of Quaid-e…   110
+#&gt;  5      1760 Topaz           Solar USA          &lt;NA&gt;                         152
+#&gt;  6      2025 Agua Caliente   Solar USA         "Arizona"                     175
+#&gt;  7      2466 Kamuthi         Solar India       "\"150,000\" homes"           213
+#&gt;  8      2720 Longyangxia     Solar China        &lt;NA&gt;                         234
+#&gt;  9      3840 Kurnool         Solar India        &lt;NA&gt;                         331
+#&gt; 10      4950 Tengger Desert  Solar China       "Covers 3.2% of the land a…   427
+#&gt; # … with 95 more rows
+```
+]
+
+---
+
+## Data dictionary
+
+The power sources represent the amount of energy a power source generates
+each day as represented in daily MWh.
+
+- `MWhperDay`: MWh of energy generated per day
+- `name`: energy source name
+- `type`: type of energy source
+- `location`: country of energy source
+- `note`: more details on energy source
+- `boe`: barrel of oil equivalent
+
+&lt;br&gt;
+
+- **Daily megawatt hour (MWh)** is a measure of energy output.
+- **1 MWh** is, on average, enough power for 28 people in the USA
+
+---
+
+## Objective
+
+Re-create the plot on the following slide.
+
+A few notes:
+
+- base font size is 18
+
+- hex colors: `c("#9d8b7e", "#315a70", "#66344c", "#678b93", "#b5cfe1", "#ffcccc")`
+
+- use function `order()` to help get the top 30
+
+Starter code:
+
+
+```r
+energy_top_30 &lt;- energy[order(energy$MWhperDay, decreasing = T)[1:30], ]
+```
+
+
+---
+
+&lt;img src="lec_08_files/figure-html/unnamed-chunk-48-1.png" style="display: block; margin: auto;" /&gt;
+
+???
+
+.tiny[
+
+```r
+ggplot(energy_top_30, mapping = aes(x = reorder(name, MWhperDay), 
+                                    y = MWhperDay / 1000, 
+                                    fill = type)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("#9d8b7e", "#315a70", "#66344c",
+                               "#678b93", "#b5cfe1", "#ffcccc")) +
+  theme_bw(base_size = 18) +
+  labs(y       = "Daily MWh (in thousands)", x = "Power Source",
+       title   = "Top 30 power source energy generators",
+       fill    = "Power Source",
+       caption = "1 MWh is, on average, enough power for 28 people in the USA") +
+  coord_flip()
+```
+]
+
+---
+
+## References
+
+1. Grolemund, G., &amp; Wickham, H. (2019). R for Data Science. R4ds.had.co.nz.
+   https://r4ds.had.co.nz/data-visualisation.html
+
+2. https://ggplot2.tidyverse.org/reference/
+
+3. Lahman, S. (2019) Lahman's Baseball Database, 1871-2018, Main page,
+   http://www.seanlahman.com/baseball-archive/statistics/
+  
+4. https://www.visualcapitalist.com/worlds-largest-energy-sources/
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

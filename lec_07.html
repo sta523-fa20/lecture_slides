@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Data reshaping with tidyr and functionals with purrr</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Data reshaping with tidyr and functionals with purrr
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [Sections 9.1 - 9.4](https://adv-r.hadley.nz/functionals.html), Advanced R
+- [Chapter 12](https://r4ds.had.co.nz/tidy-data.html), R for Data Science
+- `tidyr` [vignette](https://tidyr.tidyverse.org/articles/tidy-data.html)
+- See `vignette("pivot")` in package `tidyr`
+- `purrr` [tutorial](https://jennybc.github.io/purrr-tutorial/index.html)
+- `purrr` [cheat sheet](https://github.com/rstudio/cheatsheets/raw/master/purrr.pdf)
+
+---
+
+class: inverse, center, middle
+
+# `tidyr`
+
+---
+
+## Tidy data
+
+![](images/tidy.png)
+
+*Source*: R for Data Science, https://r4ds.had.co.nz
+
+---
+
+## Getting started
+
+
+```r
+library(tidyverse)
+```
+
+
+```r
+congress &lt;- read_csv("http://www2.stat.duke.edu/~sms185/data/politics/congress.csv")
+congress
+```
+
+```
+#&gt; # A tibble: 54 x 12
+#&gt;    year_start year_end total_senate dem_senate gop_senate other_senate
+#&gt;         &lt;dbl&gt;    &lt;dbl&gt;        &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;        &lt;dbl&gt;
+#&gt;  1       1913     1915           96         51         44            1
+#&gt;  2       1915     1917           96         56         39            1
+#&gt;  3       1917     1919           96         53         42            1
+#&gt;  4       1919     1921           96         47         48            1
+#&gt;  5       1921     1923           96         37         59           NA
+#&gt;  6       1923     1925           96         43         51            2
+#&gt;  7       1925     1927           96         40         54            1
+#&gt;  8       1927     1929           96         47         48            1
+#&gt;  9       1929     1931           96         39         56            1
+#&gt; 10       1931     1933           96         47         48            1
+#&gt; # … with 44 more rows, and 6 more variables: vacant_senate &lt;dbl&gt;,
+#&gt; #   total_house &lt;dbl&gt;, dem_house &lt;dbl&gt;, gop_house &lt;dbl&gt;, other_house &lt;dbl&gt;,
+#&gt; #   vacant_house &lt;dbl&gt;
+```
+
+---
+
+## Smaller data set
+
+
+```r
+senate_1913 &lt;- congress %&gt;% 
+  select(year_start, year_end, contains("senate"), -total_senate) %&gt;% 
+  arrange(year_start) %&gt;% 
+  slice(1)
+
+senate_1913
+```
+
+```
+#&gt; # A tibble: 1 x 6
+#&gt;   year_start year_end dem_senate gop_senate other_senate vacant_senate
+#&gt;        &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;        &lt;dbl&gt;         &lt;dbl&gt;
+#&gt; 1       1913     1915         51         44            1            NA
+```
+
+---
+
+## Wide to long
+
+
+```
+#&gt; # A tibble: 1 x 6
+#&gt;   year_start year_end dem_senate gop_senate other_senate vacant_senate
+#&gt;        &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;        &lt;dbl&gt;         &lt;dbl&gt;
+#&gt; 1       1913     1915         51         44            1            NA
+```
+
+&lt;br/&gt;
+--
+
+
+```r
+senate_1913_long &lt;- senate_1913 %&gt;% 
+  pivot_longer(cols = dem_senate:vacant_senate, 
+               names_to = "party", values_to = "seats")
+senate_1913_long
+```
+
+```
+#&gt; # A tibble: 4 x 4
+#&gt;   year_start year_end party         seats
+#&gt;        &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;         &lt;dbl&gt;
+#&gt; 1       1913     1915 dem_senate       51
+#&gt; 2       1913     1915 gop_senate       44
+#&gt; 3       1913     1915 other_senate      1
+#&gt; 4       1913     1915 vacant_senate    NA
+```
+
+---
+
+## Long to wide
+
+
+```
+#&gt; # A tibble: 4 x 4
+#&gt;   year_start year_end party         seats
+#&gt;        &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;         &lt;dbl&gt;
+#&gt; 1       1913     1915 dem_senate       51
+#&gt; 2       1913     1915 gop_senate       44
+#&gt; 3       1913     1915 other_senate      1
+#&gt; 4       1913     1915 vacant_senate    NA
+```
+
+&lt;br/&gt;
+--
+
+
+```r
+senate_1913_long %&gt;% 
+  pivot_wider(names_from = party, values_from = seats)
+```
+
+```
+#&gt; # A tibble: 1 x 6
+#&gt;   year_start year_end dem_senate gop_senate other_senate vacant_senate
+#&gt;        &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;        &lt;dbl&gt;         &lt;dbl&gt;
+#&gt; 1       1913     1915         51         44            1            NA
+```
+
+---
+
+## `pivot_*()`
+
+Lengthen the data (increase the number of rows, decrease the number of columns)
+
+
+```r
+pivot_longer(data, cols, names_to = "col_name", values_to = "col_values")
+```
+
+--
+
+&lt;br/&gt;
+
+Widen the data (decrease the number of rows, increase the number of columns)
+
+
+```r
+pivot_wider(names_from = name_of_var, values_to = var_with_values)
+```
+
+---
+
+## Exercise
+
+Consider a tibble of data filtered from `world_bank_pop`. This dataset is
+included in package `tidyr`.
+
+
+```r
+usa_pop &lt;- world_bank_pop %&gt;% 
+  filter(country == "USA")
+```
+
+Tidy `usa_pop` so it looks like the tibble below. 
+See `?world_bank_pop` for a description of the variables and their values.
+
+&lt;br/&gt;
+
+
+```
+#&gt; # A tibble: 6 x 6
+#&gt;   country year  sp_urb_totl sp_urb_grow sp_pop_totl sp_pop_grow
+#&gt;   &lt;chr&gt;   &lt;chr&gt;       &lt;dbl&gt;       &lt;dbl&gt;       &lt;dbl&gt;       &lt;dbl&gt;
+#&gt; 1 USA     2000    223069137        1.51   282162411       1.11 
+#&gt; 2 USA     2001    225792302        1.21   284968955       0.990
+#&gt; 3 USA     2002    228400290        1.15   287625193       0.928
+#&gt; 4 USA     2003    230876596        1.08   290107933       0.859
+#&gt; 5 USA     2004    233532722        1.14   292805298       0.925
+#&gt; 6 USA     2005    236200507        1.14   295516599       0.922
+```
+
+
+???
+
+## Solution
+
+.solution[
+
+
+```r
+usa_pop %&gt;% 
+  pivot_longer(cols = `2000`:`2017`, names_to = "year", values_to = "value") %&gt;% 
+  pivot_wider(names_from = indicator, values_from = value) %&gt;% 
+  janitor::clean_names()
+```
+
+```
+#&gt; # A tibble: 18 x 6
+#&gt;    country year  sp_urb_totl sp_urb_grow sp_pop_totl sp_pop_grow
+#&gt;    &lt;chr&gt;   &lt;chr&gt;       &lt;dbl&gt;       &lt;dbl&gt;       &lt;dbl&gt;       &lt;dbl&gt;
+#&gt;  1 USA     2000    223069137       1.51    282162411       1.11 
+#&gt;  2 USA     2001    225792302       1.21    284968955       0.990
+#&gt;  3 USA     2002    228400290       1.15    287625193       0.928
+#&gt;  4 USA     2003    230876596       1.08    290107933       0.859
+#&gt;  5 USA     2004    233532722       1.14    292805298       0.925
+#&gt;  6 USA     2005    236200507       1.14    295516599       0.922
+#&gt;  7 USA     2006    238999326       1.18    298379912       0.964
+#&gt;  8 USA     2007    241795278       1.16    301231207       0.951
+#&gt;  9 USA     2008    244607104       1.16    304093966       0.946
+#&gt; 10 USA     2009    247276259       1.09    306771529       0.877
+#&gt; 11 USA     2010    249858829       1.04    309338421       0.833
+#&gt; 12 USA     2011    252257346       0.955   311644280       0.743
+#&gt; 13 USA     2012    254708202       0.967   313993272       0.751
+#&gt; 14 USA     2013    257095490       0.933   316234505       0.711
+#&gt; 15 USA     2014    259623192       0.978   318622525       0.752
+#&gt; 16 USA     2015    262196447       0.986   321039839       0.756
+#&gt; 17 USA     2016    264746567       0.968   323405935       0.734
+#&gt; 18 USA     2017    267278643       0.952   325719178       0.713
+```
+
+]
+
+---
+
+## Pivoting
+
+Two older, but related, functions in `tidyr` that you may have encountered
+before are `gather()` and `spread()`.
+
+- Function `gather()` is similar to function `pivot_longer()` in that it
+  "lengthens" data, increasing the number of rows and 
+  decreasing the number of columns.
+
+- Function `spread()` is similar to function `pivot_wider()` in that it makes 
+  a dataset wider by increasing the number of columns and decreasing the number 
+  of rows.
+
+&lt;br/&gt;
+
+Check out the 
+[vignette](https://tidyr.tidyverse.org/articles/pivot.html#introduction) for 
+more examples on pivoting data frames.
+
+---
+
+## Unite columns
+
+
+```
+#&gt; # A tibble: 4 x 4
+#&gt;   year_start year_end party         seats
+#&gt;        &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;         &lt;dbl&gt;
+#&gt; 1       1913     1915 dem_senate       51
+#&gt; 2       1913     1915 gop_senate       44
+#&gt; 3       1913     1915 other_senate      1
+#&gt; 4       1913     1915 vacant_senate    NA
+```
+
+&lt;br/&gt;
+--
+
+
+```r
+senate_1913_long %&gt;% 
+  unite(col = "term", year_start:year_end, sep = "-")
+```
+
+```
+#&gt; # A tibble: 4 x 3
+#&gt;   term      party         seats
+#&gt;   &lt;chr&gt;     &lt;chr&gt;         &lt;dbl&gt;
+#&gt; 1 1913-1915 dem_senate       51
+#&gt; 2 1913-1915 gop_senate       44
+#&gt; 3 1913-1915 other_senate      1
+#&gt; 4 1913-1915 vacant_senate    NA
+```
+
+--
+
+
+```r
+unite(data, col, ..., sep = "_", remove = TRUE, na.rm = FALSE)
+```
+
+
+---
+
+## Separate columns
+
+
+```
+#&gt; # A tibble: 4 x 4
+#&gt;   year_start year_end party         seats
+#&gt;        &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;         &lt;dbl&gt;
+#&gt; 1       1913     1915 dem_senate       51
+#&gt; 2       1913     1915 gop_senate       44
+#&gt; 3       1913     1915 other_senate      1
+#&gt; 4       1913     1915 vacant_senate    NA
+```
+
+--
+
+
+```r
+senate_1913_long %&gt;% 
+  separate(col = party, into = c("party", "leg_branch"), sep = "_")
+```
+
+```
+#&gt; # A tibble: 4 x 5
+#&gt;   year_start year_end party  leg_branch seats
+#&gt;        &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;  &lt;chr&gt;      &lt;dbl&gt;
+#&gt; 1       1913     1915 dem    senate        51
+#&gt; 2       1913     1915 gop    senate        44
+#&gt; 3       1913     1915 other  senate         1
+#&gt; 4       1913     1915 vacant senate        NA
+```
+
+--
+
+
+```r
+separate(data, col, into, sep = "[^[:alnum:]]+", remove = TRUE,
+  convert = FALSE, extra = "warn", fill = "warn", ...)
+```
+
+???
+
+Separator between columns.
+
+If character, is interpreted as a regular expression. 
+The default value is a regular expression that matches any sequence of 
+non-alphanumeric values.
+
+If numeric, interpreted as positions to split at. Positive values start at 1 at 
+the far-left of the string; negative value start at -1 at the far-right of the 
+string. The length of sep should be one less than into.
+
+---
+
+class: inverse, center, middle
+
+# Functionals
+
+---
+
+## What is a functional?
+
+A functional is a function that takes a function as an input and returns
+a vector as output.
+
+&lt;br/&gt;
+
+
+```r
+fixed_point &lt;- function(f, x0, tol = .0001, ...) {
+  y &lt;- f(x0, ...)
+  x_new &lt;- x0
+  
+  while (abs(y - x_new) &gt; tol) {
+    x_new &lt;- y
+    y &lt;- f(x_new, ...)
+  }
+  
+  return(x_new)
+}
+```
+
+&lt;br/&gt;
+
+**Argument `f` takes in a function name.**
+
+---
+
+
+```r
+fixed_point(cos, 1)
+```
+
+```
+#&gt; [1] 0.7391302
+```
+
+```r
+fixed_point(sin, 0)
+```
+
+```
+#&gt; [1] 0
+```
+
+```r
+fixed_point(f = sqrt, x0 = .01, tol = .000000001)
+```
+
+```
+#&gt; [1] 1
+```
+
+---
+
+## Functional programming
+
+A functional is one property of first-class functions and part of what makes a 
+language a functional programming language.
+
+&lt;center&gt;
+&lt;img src="images/functional_programming.png"&gt;
+&lt;/center&gt;
+
+---
+
+class: inverse, center, middle
+
+# Apply functions
+
+---
+
+
+## `[a-z]pply()` functions
+
+The apply functions are a collection of tools for functional programming in R, 
+they are variations of the `map` function found in many other languages.
+
+---
+
+## `lapply()`
+
+Usage: `lapply(X, FUN, ...)`
+
+`lapply()` returns a list of the same length as `X`, each element of which is 
+the result of applying `FUN` to the corresponding element of `X`.
+
+&lt;br/&gt;
+
+.pull-left[
+
+```r
+lapply(1:8, sqrt) %&gt;% 
+  str()
+```
+
+```
+#&gt; List of 8
+#&gt;  $ : num 1
+#&gt;  $ : num 1.41
+#&gt;  $ : num 1.73
+#&gt;  $ : num 2
+#&gt;  $ : num 2.24
+#&gt;  $ : num 2.45
+#&gt;  $ : num 2.65
+#&gt;  $ : num 2.83
+```
+]
+
+.pull-right[
+
+```r
+lapply(1:8, function(x) (x+1)^2) %&gt;% 
+  str()
+```
+
+```
+#&gt; List of 8
+#&gt;  $ : num 4
+#&gt;  $ : num 9
+#&gt;  $ : num 16
+#&gt;  $ : num 25
+#&gt;  $ : num 36
+#&gt;  $ : num 49
+#&gt;  $ : num 64
+#&gt;  $ : num 81
+```
+]
+
+---
+
+
+```r
+lapply(1:8, function(x, pow) x ^ pow, 3) %&gt;%
+  str()
+```
+
+```
+#&gt; List of 8
+#&gt;  $ : num 1
+#&gt;  $ : num 8
+#&gt;  $ : num 27
+#&gt;  $ : num 64
+#&gt;  $ : num 125
+#&gt;  $ : num 216
+#&gt;  $ : num 343
+#&gt;  $ : num 512
+```
+
+--
+
+
+```r
+pow &lt;- function(x, pow) x ^ pow
+lapply(1:8, pow, x = 2) %&gt;%
+  str()
+```
+
+```
+#&gt; List of 8
+#&gt;  $ : num 2
+#&gt;  $ : num 4
+#&gt;  $ : num 8
+#&gt;  $ : num 16
+#&gt;  $ : num 32
+#&gt;  $ : num 64
+#&gt;  $ : num 128
+#&gt;  $ : num 256
+```
+
+---
+
+## `sapply()`
+
+Usage: `sapply(X, FUN, ..., simplify = TRUE, USE.NAMES = TRUE)`
+
+`sapply()` is a *user-friendly* version and wrapper of `lapply`, it is a 
+*simplifying* version of lapply. Whenever possible it will return a vector, 
+matrix, or an array.
+
+&lt;br/&gt;
+
+
+```r
+sapply(1:8, sqrt) %&gt;% 
+  round(2)
+```
+
+```
+#&gt; [1] 1.00 1.41 1.73 2.00 2.24 2.45 2.65 2.83
+```
+
+```r
+sapply(1:8, function(x) (x + 1)^2)
+```
+
+```
+#&gt; [1]  4  9 16 25 36 49 64 81
+```
+
+---
+
+
+```r
+sapply(1:8, function(x) c(x, x^2, x^3, x^4))
+```
+
+```
+#&gt;      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8]
+#&gt; [1,]    1    2    3    4    5    6    7    8
+#&gt; [2,]    1    4    9   16   25   36   49   64
+#&gt; [3,]    1    8   27   64  125  216  343  512
+#&gt; [4,]    1   16   81  256  625 1296 2401 4096
+```
+
+```r
+sapply(1:8, function(x) list(x, x^2, x^3, x^4))
+```
+
+```
+#&gt;      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8]
+#&gt; [1,] 1    2    3    4    5    6    7    8   
+#&gt; [2,] 1    4    9    16   25   36   49   64  
+#&gt; [3,] 1    8    27   64   125  216  343  512 
+#&gt; [4,] 1    16   81   256  625  1296 2401 4096
+```
+
+---
+
+
+```r
+sapply(2:6, seq)
+```
+
+```
+#&gt; [[1]]
+#&gt; [1] 1 2
+#&gt; 
+#&gt; [[2]]
+#&gt; [1] 1 2 3
+#&gt; 
+#&gt; [[3]]
+#&gt; [1] 1 2 3 4
+#&gt; 
+#&gt; [[4]]
+#&gt; [1] 1 2 3 4 5
+#&gt; 
+#&gt; [[5]]
+#&gt; [1] 1 2 3 4 5 6
+```
+
+**Why do we have a list?**
+
+&lt;br/&gt;
+
+--
+
+
+```r
+sapply(2:6, seq, from = 1, length.out = 4)
+```
+
+```
+#&gt;          [,1]     [,2] [,3]     [,4]     [,5]
+#&gt; [1,] 1.000000 1.000000    1 1.000000 1.000000
+#&gt; [2,] 1.333333 1.666667    2 2.333333 2.666667
+#&gt; [3,] 1.666667 2.333333    3 3.666667 4.333333
+#&gt; [4,] 2.000000 3.000000    4 5.000000 6.000000
+```
+
+---
+
+## `[ls]apply()` and data frames
+
+We can use these functions with data frames, the key is to remember that a
+data frame is just a fancy list.
+
+
+```r
+df &lt;-  data.frame(a = 1:6, b = letters[1:6], c = c(TRUE,FALSE))
+lapply(df, class) %&gt;% str()
+```
+
+```
+#&gt; List of 3
+#&gt;  $ a: chr "integer"
+#&gt;  $ b: chr "character"
+#&gt;  $ c: chr "logical"
+```
+
+```r
+sapply(df, class)
+```
+
+```
+#&gt;           a           b           c 
+#&gt;   "integer" "character"   "logical"
+```
+
+---
+
+## More in the family
+
+- `apply(X, MARGIN, FUN, ...)` - applies a function over the rows or columns 
+  of a data frame, matrix, or array
+
+- `vapply(X, FUN, FUN.VALUE, ..., USE.NAMES = TRUE)` - is similar to `sapply()`, 
+  but has a enforced return type and size
+
+- `mapply(FUN, ..., MoreArgs = NULL, SIMPLIFY = TRUE, USE.NAMES = TRUE)` -  like
+  `sapply()` but will iterate over multiple vectors at the same time.
+
+- `rapply(object, f, classes = "ANY", deflt = NULL, how = c("unlist", "replace", "list"), ...)` - a recursive version of `lapply()`, behavior depends largely on the `how` argument
+
+- `eapply(env, FUN, ..., all.names = FALSE, USE.NAMES = TRUE)` -  apply a 
+  function over an environment.
+
+---
+
+## Exercise
+
+Using `sw_people` in package `repurrrsive`, extract the name of all 
+characters using:
+
+- a for loop,
+
+- an apply function.
+
+.tiny[
+
+```r
+library(repurrrsive)
+str(sw_people[[1]])
+```
+
+```
+#&gt; List of 16
+#&gt;  $ name      : chr "Luke Skywalker"
+#&gt;  $ height    : chr "172"
+#&gt;  $ mass      : chr "77"
+#&gt;  $ hair_color: chr "blond"
+#&gt;  $ skin_color: chr "fair"
+#&gt;  $ eye_color : chr "blue"
+#&gt;  $ birth_year: chr "19BBY"
+#&gt;  $ gender    : chr "male"
+#&gt;  $ homeworld : chr "http://swapi.co/api/planets/1/"
+#&gt;  $ films     : chr [1:5] "http://swapi.co/api/films/6/" "http://swapi.co/api/films/3/" "http://swapi.co/api/films/2/" "http://swapi.co/api/films/1/" ...
+#&gt;  $ species   : chr "http://swapi.co/api/species/1/"
+#&gt;  $ vehicles  : chr [1:2] "http://swapi.co/api/vehicles/14/" "http://swapi.co/api/vehicles/30/"
+#&gt;  $ starships : chr [1:2] "http://swapi.co/api/starships/12/" "http://swapi.co/api/starships/22/"
+#&gt;  $ created   : chr "2014-12-09T13:50:51.644000Z"
+#&gt;  $ edited    : chr "2014-12-20T21:17:56.891000Z"
+#&gt;  $ url       : chr "http://swapi.co/api/people/1/"
+```
+]
+
+*Hint:* The `[` and `[[` are functions.
+
+???
+
+## Solutions
+
+
+```r
+out &lt;- character(length = length(sw_people))
+
+for (i in seq_along(sw_people)) {
+  out[i] &lt;- sw_people[[i]]$name
+}
+```
+
+
+```r
+s_out &lt;- sapply(sw_people, `[[`, "name")
+```
+
+---
+
+class: inverse, center, middle
+
+# `purrr`
+
+---
+
+## Why `purrr`?
+
+- Member of the `tidyverse` package
+
+- Improves the functional programming tools in R
+
+- The `map()` family of functions can be used to replace loops 
+  and `[a-z]pply()`
+  
+    - Consistent output
+    
+    - Easier to read and write
+
+---
+
+## Map functions
+
+Basic functions for looping over an object and returning a value 
+(of a specific type) - replacement for `lapply()`/`sapply()`/`vapply()`.
+
+| Map variant              | Description                            |
+|--------------------------|----------------------------------------|
+| `map()`                  | returns a list                         |
+| `map_lgl()`              | returns a logical vector               |
+| `map_int()`              | returns a integer vector               |
+| `map_dbl()`              | returns a double vector                |
+| `map_chr()`              | returns a character vector             |
+| `map_df()` / `map_dfr()` | returns a data frame by row binding    |
+| `map_dfc()`              | returns a data frame by column binding |
+
+&lt;br/&gt;
+
+All have leading arguments `.x` and `.f`.
+
+---
+
+## `map_*()` is strict
+
+
+```r
+x &lt;- list(1L:5L, c(-2, .2, -20), c(pi, sqrt(2), 7))
+```
+
+
+
+```r
+map_dbl(x, mean)
+```
+
+```
+#&gt; [1]  3.000000 -7.266667  3.851935
+```
+
+```r
+map_chr(x, mean)
+```
+
+```
+#&gt; [1] "3.000000"  "-7.266667" "3.851935"
+```
+
+```r
+map_lgl(x, mean)
+```
+
+```
+#&gt; Error: Can't coerce element 1 from a double to a logical
+```
+
+```r
+map_int(x, mean)
+```
+
+```
+#&gt; Error: Can't coerce element 1 from a double to a integer
+```
+
+---
+
+
+```r
+x &lt;- list(1L:5L, c(-2, .2, -20), c(pi, sqrt(2), 7))
+```
+
+--
+
+
+```r
+map_dbl(x, `[`, 1)
+```
+
+```
+#&gt; [1]  1.000000 -2.000000  3.141593
+```
+
+```r
+map_chr(x, `[`, 3)
+```
+
+```
+#&gt; [1] "3"          "-20.000000" "7.000000"
+```
+
+```r
+map_lgl(x, `[`, 1)
+```
+
+```
+#&gt; Error: Can't coerce element 1 from a integer to a logical
+```
+
+```r
+map_int(x, `[`, 1)
+```
+
+```
+#&gt; Error: Can't coerce element 2 from a double to a integer
+```
+
+---
+
+## Flexibility in `.f`
+
+Argument `.f` in `map()` and `map_*()` can take a
+
+- function,
+
+- formula (one sided) / anonymous function, or a
+
+- vector.
+
+    - character vector
+    - numeric vector
+    - list
+
+---
+
+## Examples
+
+
+.pull-left[
+Using `map_*()`
+.tiny[
+
+```r
+map_dbl(1:5, ~ . ^ .)
+```
+
+```
+#&gt; [1]    1    4   27  256 3125
+```
+
+```r
+map_dbl(1:5, ~ .x ^ .x)
+```
+
+```
+#&gt; [1]    1    4   27  256 3125
+```
+
+```r
+map2_dbl(1:5, -1:-5,  ~ .y ^ .x)
+```
+
+```
+#&gt; [1]    -1     4   -27   256 -3125
+```
+
+```r
+pmap_dbl(data.frame(1:5, 1:5, 1:5), 
+         ~..1 + ..2 + ..3)
+```
+
+```
+#&gt; [1]  3  6  9 12 15
+```
+]
+]
+
+.pull-right[
+Using Base R
+.tiny[
+
+```r
+sapply(1:5, function(x) x ^ x)
+```
+
+```
+#&gt; [1]    1    4   27  256 3125
+```
+
+```r
+sapply(1:5, function(x) x ^ x)
+```
+
+```
+#&gt; [1]    1    4   27  256 3125
+```
+
+```r
+sapply(1:5, function(x, y) y ^ x, y = -1:-5) %&gt;% 
+  diag()
+```
+
+```
+#&gt; [1]    -1     4   -27   256 -3125
+```
+
+```r
+sapply(1:5, function(x, y, z) x + y + z, y = 1:5, z = 1:5) %&gt;% 
+  diag()
+```
+
+```
+#&gt; [1]  3  6  9 12 15
+```
+]
+]
+
+
+---
+
+## More examples
+
+Consider `gh_users` from package `repurrrsive`.
+
+
+```r
+library(repurrrsive)
+str(gh_users, max.level = 1)
+```
+
+```
+#&gt; List of 6
+#&gt;  $ :List of 30
+#&gt;  $ :List of 30
+#&gt;  $ :List of 30
+#&gt;  $ :List of 30
+#&gt;  $ :List of 30
+#&gt;  $ :List of 30
+```
+
+---
+.tiny[
+
+```r
+str(gh_users[[1]], max.level = 1)
+```
+
+```
+#&gt; List of 30
+#&gt;  $ login              : chr "gaborcsardi"
+#&gt;  $ id                 : int 660288
+#&gt;  $ avatar_url         : chr "https://avatars.githubusercontent.com/u/660288?v=3"
+#&gt;  $ gravatar_id        : chr ""
+#&gt;  $ url                : chr "https://api.github.com/users/gaborcsardi"
+#&gt;  $ html_url           : chr "https://github.com/gaborcsardi"
+#&gt;  $ followers_url      : chr "https://api.github.com/users/gaborcsardi/followers"
+#&gt;  $ following_url      : chr "https://api.github.com/users/gaborcsardi/following{/other_user}"
+#&gt;  $ gists_url          : chr "https://api.github.com/users/gaborcsardi/gists{/gist_id}"
+#&gt;  $ starred_url        : chr "https://api.github.com/users/gaborcsardi/starred{/owner}{/repo}"
+#&gt;  $ subscriptions_url  : chr "https://api.github.com/users/gaborcsardi/subscriptions"
+#&gt;  $ organizations_url  : chr "https://api.github.com/users/gaborcsardi/orgs"
+#&gt;  $ repos_url          : chr "https://api.github.com/users/gaborcsardi/repos"
+#&gt;  $ events_url         : chr "https://api.github.com/users/gaborcsardi/events{/privacy}"
+#&gt;  $ received_events_url: chr "https://api.github.com/users/gaborcsardi/received_events"
+#&gt;  $ type               : chr "User"
+#&gt;  $ site_admin         : logi FALSE
+#&gt;  $ name               : chr "Gábor Csárdi"
+#&gt;  $ company            : chr "Mango Solutions, @MangoTheCat "
+#&gt;  $ blog               : chr "http://gaborcsardi.org"
+#&gt;  $ location           : chr "Chippenham, UK"
+#&gt;  $ email              : chr "csardi.gabor@gmail.com"
+#&gt;  $ hireable           : NULL
+#&gt;  $ bio                : NULL
+#&gt;  $ public_repos       : int 52
+#&gt;  $ public_gists       : int 6
+#&gt;  $ followers          : int 303
+#&gt;  $ following          : int 22
+#&gt;  $ created_at         : chr "2011-03-09T17:29:25Z"
+#&gt;  $ updated_at         : chr "2016-10-11T11:05:06Z"
+```
+]
+
+---
+
+
+```r
+map_chr(gh_users, "login")
+```
+
+```
+#&gt; [1] "gaborcsardi" "jennybc"     "jtleek"      "juliasilge"  "leeper"     
+#&gt; [6] "masalmon"
+```
+
+```r
+map_chr(gh_users, 1)
+```
+
+```
+#&gt; [1] "gaborcsardi" "jennybc"     "jtleek"      "juliasilge"  "leeper"     
+#&gt; [6] "masalmon"
+```
+
+--
+
+
+```r
+map_chr(gh_users, c(1, 2))
+```
+
+```
+#&gt; Error: Result 1 must be a single string, not NULL of length 0
+```
+
+---
+
+
+```r
+map(gh_users, `[`, c(1, 2)) %&gt;% 
+  str()
+```
+
+```
+#&gt; List of 6
+#&gt;  $ :List of 2
+#&gt;   ..$ login: chr "gaborcsardi"
+#&gt;   ..$ id   : int 660288
+#&gt;  $ :List of 2
+#&gt;   ..$ login: chr "jennybc"
+#&gt;   ..$ id   : int 599454
+#&gt;  $ :List of 2
+#&gt;   ..$ login: chr "jtleek"
+#&gt;   ..$ id   : int 1571674
+#&gt;  $ :List of 2
+#&gt;   ..$ login: chr "juliasilge"
+#&gt;   ..$ id   : int 12505835
+#&gt;  $ :List of 2
+#&gt;   ..$ login: chr "leeper"
+#&gt;   ..$ id   : int 3505428
+#&gt;  $ :List of 2
+#&gt;   ..$ login: chr "masalmon"
+#&gt;   ..$ id   : int 8360597
+```
+
+
+```r
+map(gh_users, `[[`, c(1, 2)) %&gt;% 
+  str()
+```
+
+```
+#&gt; Error in .x[[...]]: subscript out of bounds
+```
+
+---
+
+
+```r
+map_dbl(gh_users, list(28, 1))
+```
+
+```
+#&gt; [1]  22  34   6  10 230  38
+```
+
+```r
+map_dbl(gh_users, list("following", 1))
+```
+
+```
+#&gt; [1]  22  34   6  10 230  38
+```
+
+--
+
+&lt;br/&gt;
+
+To make the above more clear:
+
+
+```r
+my_list &lt;- list(
+  list(x = 1:10, y = 6, z = c(9, 0)),
+  list(x = 1:10, y = 6, z = c(-3, 2))
+)
+map_chr(my_list, list("z", 2))
+```
+
+```
+#&gt; [1] "0.000000" "2.000000"
+```
+
+```r
+map_chr(my_list, list(3, 1))
+```
+
+```
+#&gt; [1] "9.000000"  "-3.000000"
+```
+
+---
+
+
+```r
+map_df(gh_users, `[`, c(1, 2))
+```
+
+```
+#&gt; # A tibble: 6 x 2
+#&gt;   login             id
+#&gt;   &lt;chr&gt;          &lt;int&gt;
+#&gt; 1 gaborcsardi   660288
+#&gt; 2 jennybc       599454
+#&gt; 3 jtleek       1571674
+#&gt; 4 juliasilge  12505835
+#&gt; 5 leeper       3505428
+#&gt; 6 masalmon     8360597
+```
+
+
+
+```r
+map_df(gh_users, `[`, c("name", "type", "location"))
+```
+
+```
+#&gt; # A tibble: 6 x 3
+#&gt;   name                   type  location              
+#&gt;   &lt;chr&gt;                  &lt;chr&gt; &lt;chr&gt;                 
+#&gt; 1 Gábor Csárdi           User  Chippenham, UK        
+#&gt; 2 Jennifer (Jenny) Bryan User  Vancouver, BC, Canada 
+#&gt; 3 Jeff L.                User  Baltimore,MD          
+#&gt; 4 Julia Silge            User  Salt Lake City, UT    
+#&gt; 5 Thomas J. Leeper       User  London, United Kingdom
+#&gt; 6 Maëlle Salmon          User  Barcelona, Spain
+```
+
+---
+
+## `map()` variants
+
+- `walk()` - returns nothing, call function exclusively for its side effects
+
+- `modify()` - returns the same type as the input object, useful for data frames
+    
+    ```r
+    df &lt;- data_frame(x = 1:3, y = -1:-3)
+    modify(df, ~ .x ^ 3)
+    ```
+    
+    ```
+    #&gt; # A tibble: 3 x 2
+    #&gt;       x     y
+    #&gt;   &lt;dbl&gt; &lt;dbl&gt;
+    #&gt; 1     1    -1
+    #&gt; 2     8    -8
+    #&gt; 3    27   -27
+    ```
+    
+- `map2()` and `pmap()` to vary two and n inputs, respectively
+
+- `imap()` iterate over indices and values
+
+
+---
+
+## Exercise
+
+Use `mtcars` and a single map or map variant to
+
+- get the type of each variable,
+
+- get the fourth row such that result is a character vector,
+
+- compute the mean of each variable, and
+
+- compute the mean and median for each variable such that the result is a
+  data frame with the mean values in row 1 and the median values in row 2.
+  
+???
+
+## Solutions
+
+
+```r
+map_chr(mtcars, typeof)
+```
+
+```
+#&gt;      mpg      cyl     disp       hp     drat       wt     qsec       vs 
+#&gt; "double" "double" "double" "double" "double" "double" "double" "double" 
+#&gt;       am     gear     carb 
+#&gt; "double" "double" "double"
+```
+
+```r
+map_chr(mtcars, 4)
+```
+
+```
+#&gt;          mpg          cyl         disp           hp         drat           wt 
+#&gt;  "21.400000"   "6.000000" "258.000000" "110.000000"   "3.080000"   "3.215000" 
+#&gt;         qsec           vs           am         gear         carb 
+#&gt;  "19.440000"   "1.000000"   "0.000000"   "3.000000"   "1.000000"
+```
+
+```r
+map_dbl(mtcars, mean)
+```
+
+```
+#&gt;        mpg        cyl       disp         hp       drat         wt       qsec 
+#&gt;  20.090625   6.187500 230.721875 146.687500   3.596563   3.217250  17.848750 
+#&gt;         vs         am       gear       carb 
+#&gt;   0.437500   0.406250   3.687500   2.812500
+```
+
+```r
+map_df(mtcars, ~ c(mean(.), median(.)))
+```
+
+```
+#&gt; # A tibble: 2 x 11
+#&gt;     mpg   cyl  disp    hp  drat    wt  qsec    vs    am  gear  carb
+#&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+#&gt; 1  20.1  6.19  231.  147.  3.60  3.22  17.8 0.438 0.406  3.69  2.81
+#&gt; 2  19.2  6     196.  123   3.70  3.32  17.7 0     0      4     2
+```
+
+---
+
+## References
+
+1. Grolemund, G., &amp; Wickham, H. (2020). R for Data Science.         
+   https://r4ds.had.co.nz/
+
+2. Wickham, H. (2020). Advanced R. https://adv-r.hadley.nz/
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

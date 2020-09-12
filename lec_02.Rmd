@@ -1050,8 +1050,8 @@ John Chambers
 
 ## References
 
-- Grolemund, G., & Wickham, H. (2019). R for Data Science. https://r4ds.had.co.nz/
+1. Grolemund, G., & Wickham, H. (2019). R for Data Science. https://r4ds.had.co.nz/
 
-- Wickham, H. (2019). Advanced R. https://adv-r.hadley.nz/
+2. Wickham, H. (2019). Advanced R. https://adv-r.hadley.nz/
 
 
