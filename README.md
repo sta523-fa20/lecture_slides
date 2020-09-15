@@ -13,7 +13,7 @@ images and the CSS file for reproducibility.
 |         | Fri, Sep 04 | Data manipulation with dplyr and tidyr |  :white_check_mark:     |
 | Week 4  | Wed, Sep 09 | Functionals with purrr                 |  :white_check_mark:     |
 |         | Fri, Sep 11 | Statistical graphics with ggplot2      |  :white_check_mark:     |
-| Week 5  | Wed, Sep 16 | Advanced visualizations                |                         |
+| Week 5  | Wed, Sep 16 | Advanced visualizations                |  :white_check_mark:     |
 |         | Fri, Sep 18 | String manipulation and regexes        |                         |
 | Week 6  | Wed, Sep 23 | Spatial data with sf                   |                         |
 |         | Fri, Sep 25 | Web scraping part I                    |                         |

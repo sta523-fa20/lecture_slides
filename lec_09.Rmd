@@ -1,0 +1,694 @@
+---
+title: "Advanced Visualizations"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [Extend ggplot2](https://ggplot2.tidyverse.org/articles/extending-ggplot2.html) 
+  by creating your own stat, geom, and theme
+- [Network visualization with `ggraph`](https://ggraph.data-imaginist.com)
+- [Plotly ggplot2 library](https://plotly.com/ggplot2/)
+- [Template themes with `ggthemes`](https://github.com/jrnold/ggthemes)
+
+---
+
+class: inverse, center, middle
+
+# `ggplot2` extensions
+
+---
+
+## Packages
+
+For these slides we will use the following packages.
+
+.normal[
+```{r}
+library(tidyverse)
+library(gapminder)  # some data
+library(ggcorrplot) # correlogram plots
+library(ggpol)      # parliament plots and more
+library(patchwork)  # combining plots
+library(gganimate)  # animations
+library(ggiraph)    # interactive plots
+```
+]
+
+Install any CRAN packages you do not have with 
+`install.packages("package_name")`. Package `patchwork` needs to be installed
+by running `devtools::install_github("thomasp85/patchwork")`.
+
+<br><br><br><br>
+
+**Code not shown for plots is available in the presentation notes. Press `P`.**
+
+---
+
+## Data: Flint water crisis
+```{r}
+flint <- read_csv("http://www2.stat.duke.edu/~sms185/data/health/flint.csv")
+flint
+```
+
+---
+
+class: inverse, center, middle
+
+# Correlogram: `ggcorrplot`
+
+---
+
+## Full matrix
+
+.tiny[
+```{r fig.width=6, fig.height=6, cache=TRUE}
+corr_mat <- round(cor(flint[, c("draw1", "draw2", "draw3")]), 2)
+
+ggcorrplot(corr = corr_mat, lab = TRUE)
+```
+]
+
+---
+
+## Full matrix
+
+.tiny[
+```{r fig.width=6, fig.height=6, cache=TRUE}
+ggcorrplot(corr = corr_mat, method = "circle", type = "full", lab = TRUE, #<<
+           colors = c("tomato2", "white", "springgreen3"), #<<
+           ggtheme = theme_bw) #<<
+```
+]
+
+---
+
+## Lower triangular
+
+.tiny[
+```{r fig.width=5.5, fig.height=5.5, cache=TRUE}
+lbl <- c("0 sec", "45 sec", "120 sec")
+
+ggcorrplot(corr = corr_mat, method = "circle", type = "lower", lab = TRUE, #<< 
+           colors = c("tomato2", "white", "springgreen3"), ggtheme = theme_bw) +
+  labs(title = "Water sample lead correlations") + #<<
+  scale_x_discrete(labels = lbl[2:3]) + #<<
+  scale_y_discrete(labels = lbl[1:2]) #<<
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Parliment plots: `ggpol`
+
+---
+
+## Data: Congressional seats
+
+```{r}
+congress <- read_csv("http://www2.stat.duke.edu/~sms185/data/politics/congress_long.csv")
+congress
+```
+
+---
+
+## Parliment plot
+
+.tiny[
+```{r fig.width=8, fig.height=4}
+ggplot(data = congress[congress$year_start == 1913 & congress$branch == "house", ]) +
+  geom_parliament(aes(seats = seats, fill = factor(party)), show.legend = TRUE, color = "black") + #<<
+  scale_fill_manual(values = c("#3A89CB", "#D65454", "#BF6FF0", "Grey"), 
+                    labels = c("Dem", "GOP", "Other", "Vacant")) +
+  labs(fill = "Party") +
+  coord_fixed() +
+  theme_void(base_size = 20)
+```
+]
+
+---
+
+## Annotation
+
+.tiny[
+```{r fig.width=8, fig.height=4}
+ggplot(data = congress[congress$year_start == 1913 & congress$branch == "house", ]) +
+  geom_parliament(aes(seats = seats, fill = factor(party)), show.legend = TRUE, color = "black") +
+  scale_fill_manual(values = c("#3A89CB", "#D65454", "#BF6FF0", "Grey"), 
+                    labels = c("Dem", "GOP", "Other", "Vacant")) +
+  annotate("text", x = 0, y = .5, label = "1913 House", size = 12) + #<<
+  labs(fill = "Party") +
+  coord_fixed() +
+  theme_void(base_size = 20)
+```
+]
+
+---
+
+## Package `ggpol`
+
+- Package `ggpol` supports a few other `geom` functions: 
+
+    - `geom_arcbar()`,
+    - `geom_bartext()`, 
+    - `geom_circle()`, 
+    - `geom_tshighlight()`,
+    - `geom_boxjitter()`.
+
+- See https://github.com/erocoar/ggpol
+
+---
+
+class: inverse, center, middle
+
+# Organizing plots: package `patchwork`
+
+---
+
+## My function: `plot_congress()`
+
+.tiny[
+```{r}
+plot_congress <- function(data, year, leg_branch, legend = TRUE, text_size = 8) {
+  data %>% 
+    filter(year_start == year, branch == leg_branch) %>% 
+    ggplot() +
+    geom_parliament(aes(seats = seats, fill = factor(party)), 
+                    show.legend = legend, color = "black") +
+    scale_fill_manual(values = c("#3A89CB", "#D65454", "#BF6FF0", "Grey"), 
+                      labels = c("Dem", "GOP", "Other", "Vacant")) +
+    annotate("text", x = 0, y = .5, label = paste(year, leg_branch), 
+             size = text_size) +
+    labs(fill = "Party") +
+    coord_fixed() +
+    theme_void(base_size = 20)
+}
+```
+]
+
+Use package `patchwork` to organize multiple plots in a single window. No need
+to facet.
+
+```{r}
+my_plot <- ggplot()
+class(my_plot)
+```
+
+---
+
+## Plot creation
+
+```{r}
+ph_1993 <- plot_congress(congress, 1993, "house")
+
+ph_2001 <- plot_congress(congress, 2001, "house", legend = FALSE)
+
+ph_2009 <- plot_congress(congress, 2009, "house", legend = FALSE)
+
+ph_2017 <- plot_congress(congress, 2017, "house", legend = FALSE)
+```
+
+<br/>
+
+Object `ph_1993` has a legend, the rest do not.
+
+---
+
+## Horizontal patchwork
+
+```{r fig.width=14, fig.height=8, cache=TRUE}
+ph_1993 + ph_2017
+```
+
+---
+
+## Vertical patchwork
+
+```{r fig.width=14, fig.height=8, cache=TRUE}
+ph_1993 + ph_2017 + plot_layout(ncol = 1)
+```
+
+---
+
+## Group patchwork
+
+```{r fig.width=16, fig.height=10, cache=TRUE}
+ph_1993 + (ph_2001 + ph_2009) + ph_2017 + plot_layout(ncol = 1, widths = 1)
+```
+
+---
+
+```{r fig.width=16, fig.height=10, cache=TRUE}
+(ph_1993 | ph_2001) / (ph_2009 | ph_2017)
+```
+
+---
+
+```{r echo=FALSE}
+ps_1993 <- plot_congress(congress, 1993, "senate", legend = FALSE, text_size = 6)
+ps_2001 <- plot_congress(congress, 2001, "senate", legend = FALSE, text_size = 6)
+ps_2009 <- plot_congress(congress, 2009, "senate", legend = TRUE, text_size = 6)
+ps_2017 <- plot_congress(congress, 2017, "senate", legend = FALSE, text_size = 6)
+```
+
+```{r fig.width=12, cache=F}
+(ps_1993 | ps_2001 | ps_2009) /  ps_2017 + plot_layout(widths = 1)
+```
+
+???
+
+.tiny[
+```{r}
+ps_1993 <- plot_congress(congress, 1993, "senate", legend = FALSE, text_size = 6)
+ps_2001 <- plot_congress(congress, 2001, "senate", legend = FALSE, text_size = 6)
+ps_2009 <- plot_congress(congress, 2009, "senate", legend = TRUE, text_size = 6)
+ps_2017 <- plot_congress(congress, 2017, "senate", legend = FALSE, text_size = 6)
+```
+]
+
+---
+
+## Package `patchwork`
+
+- Supports operators `+`, `-`, `|` (besides), `/` (over)
+
+- Specify layouts and spacing with `plot_layout()`, `plot_spacer()`, 
+  respectively
+
+- Add grouping with `{ }` or `( )`
+
+- Use `&` or `*` to add elements to all subplots, `*` only affects current
+  nesting level
+
+- See https://github.com/thomasp85/patchwork
+
+---
+
+class: inverse, center, middle
+
+# GIF: `gifski`
+
+---
+
+## Using `gifski`
+
+```{r cache=TRUE, echo=FALSE, animation.hook="gifski", interval = .75, fig.width=12, fig.height=7, fig.cap="Dem: blue, GOP: red, Other: purple, Vacant: grey"}
+
+for (i in seq(1913, 2019, 2)) {
+print({
+  plot_congress(congress, year = i, leg_branch = "house", legend = FALSE)
+  })
+}
+```
+
+???
+
+````markdown
+`r ''````{r eval=FALSE, echo=FALSE, animation.hook="gifski", interval = .75, fig.width=12, fig.height=7, fig.cap="Dem: blue, GOP: red, Other: purple, Vacant: grey"}
+
+for (i in seq(1913, 2019, 2)) {
+print({
+  plot_congress(congress, year = i, leg_branch = "house", legend = FALSE)
+  })
+}
+```
+````
+
+---
+
+## Fast GIF with patchwork
+
+```{r cache=TRUE, echo=FALSE, animation.hook="gifski", interval = .1, fig.width=12, fig.height=8}
+
+for (i in seq(1913, 2019, 2)) {
+  
+  p_h <- plot_congress(congress, year = i, leg_branch = "house", legend = FALSE)
+  p_s <- plot_congress(congress, year = i, leg_branch = "senate", legend = FALSE)
+  
+print({p_s + p_h + plot_layout(ncol = 1)})
+}
+```
+
+???
+
+````markdown
+`r ''````{{r cache=TRUE, echo=FALSE, animation.hook="gifski", interval = .1, fig.width=12, fig.height=8}
+
+for (i in seq(1913, 2019, 2)) {
+  
+  p_h <- plot_congress(congress, year = i, leg_branch = "house", legend = FALSE)
+  p_s <- plot_congress(congress, year = i, leg_branch = "senate", legend = FALSE)
+  
+print({p_s + p_h + plot_layout(ncol = 1)})
+
+}
+```
+````
+---
+
+## Creating a GIF
+
+1. Install `gifski` with `install.packages("gifski")`
+
+2. Use chunk options
+    ````markdown
+    `r ''````{r animation.hook="gifski", interval = .75}
+    
+    ```
+    ````
+3. Add code for plots in a loop
+    ````markdown
+    `r ''````{r animation.hook="gifski", interval = .75}
+    for (i in seq(1913, 2019, 2)) {
+      print({
+        plot_congress(congress, year = i, leg_branch = "house", legend = FALSE)
+      })
+    }
+    ```
+    ````
+4. To speed up future knits use chunk option `cache=TRUE`.
+
+---
+class: inverse, center, middle
+
+# Animation: `gganimate()`
+
+---
+
+## Data: `gapminder`
+
+```{r}
+library(gapminder) 
+gapminder
+```
+
+---
+
+## Nothing new
+
+.tiny[
+```{r fig.width=12, fig.height=6}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, size = pop, colour = country)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_colour_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  facet_wrap(~continent) +
+  theme_bw(base_size = 16)
+```
+]
+
+---
+
+## Animate with `gganimate()`
+
+```{r cache=TRUE, echo=FALSE, fig.width=12, fig.height=7}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, size = pop, colour = country)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_colour_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  facet_wrap(~continent) +
+  theme_bw(base_size = 16) +
+  labs(title = 'Year: {frame_time}', x = 'GDP per capita', y = 'Life expectancy') + #<<
+  transition_time(year) + #<<
+  ease_aes('linear') #<<
+```
+
+---
+
+## What did we add?
+
+Base plot
+
+.tiny[
+```{r eval=FALSE}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, size = pop, colour = country)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_colour_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  facet_wrap(~continent) +
+  theme_bw(base_size = 16)
+```
+]
+
+--
+
+Transform to animation
+
+.tiny[
+```{r eval=FALSE}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, size = pop, colour = country)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_colour_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  facet_wrap(~continent) +
+  theme_bw(base_size = 16) +
+  labs(title = 'Year: {frame_time}', x = 'GDP per capita', y = 'Life expectancy') + #<<
+  transition_time(year) + #<<
+  ease_aes('linear') #<<
+```
+]
+
+---
+
+## Package `gganimate`
+
+- Core functions
+    - `transition_*()` defines how the data should be spread out and how it 
+      relates to itself across time.
+  
+    - `view_*()` defines how the positional scales should change along the 
+      animation.
+
+    - `shadow_*()` defines how data from other points in time should be presented 
+      in the given point in time.
+
+    - `enter_*()` / `exit_*()` defines how new data should appear and how old data 
+      should disappear during the course of the animation.
+
+    - `ease_aes()` defines how different aesthetics should be eased during 
+      transitions.
+      
+- Label variables
+    - function dependent, use `{` `}` to access their values.
+
+- See https://gganimate.com
+
+---
+
+class: inverse, center, middle
+
+# Interactive plots: `ggiraph`
+
+---
+
+## Data: NC births and SID
+
+```{r}
+nc <- read_csv("http://www2.stat.duke.edu/~sms185/data/health/nc_birth_sid.csv")
+nc
+```
+
+---
+
+## Standard scatter plot
+
+.tiny[
+```{r echo=FALSE, fig.width=10, fig.height=7}
+ggplot(nc, mapping = aes(x = AREA, y = BIR74)) +
+  geom_point(size = 4, alpha = .5) +
+  theme_minimal()
+```
+]
+
+---
+
+## Which counties are these?
+
+.tiny[
+```{r echo=FALSE}
+gg_name <- ggplot(nc, mapping = aes(x = AREA, y = BIR74)) +
+  geom_point_interactive(aes(tooltip = NAME), size = 4, alpha = .5) +
+  theme_minimal()
+
+girafe(code = {print(gg_name)}, height_svg = 6, width_svg = 9)
+```
+]
+
+---
+
+## What changed?
+
+A scatter plot with `geom_point()`
+
+```{r eval=FALSE}
+ggplot(nc, mapping = aes(x = AREA, y = BIR74)) +
+  geom_point(size = 4, alpha = .5) +
+  theme_minimal()
+```
+
+--
+
+<br/><br/>
+
+A scatter plot with `geom_point_interactive()` and aesthetic `tooltip`
+
+```{r eval=FALSE}
+gg_name <- ggplot(nc, mapping = aes(x = AREA, y = BIR74)) +
+  geom_point_interactive(aes(tooltip = NAME), size = 4, alpha = .5) + #<<
+  theme_minimal()
+
+girafe(code = {print(gg_name)}, height_svg = 6, width_svg = 9) #<<
+```
+
+---
+
+## On hover functionality
+
+```{r echo=FALSE}
+gg_hover <- ggplot(nc, mapping = aes(x = AREA, y = BIR74)) +
+  geom_point_interactive(aes(data_id = NAME, tooltip = NAME), size = 4, alpha = .5) + #<<
+  theme_minimal()
+
+girafe(code = {print(gg_hover)}, height_svg = 6, width_svg = 9)
+```
+
+---
+
+## What changed?
+
+A scatter plot with `geom_point_interactive()` and aesthetic `tooltip`
+
+```{r eval=FALSE}
+gg_name <- ggplot(nc, mapping = aes(x = AREA, y = BIR74)) +
+  geom_point_interactive(aes(tooltip = NAME), size = 4, alpha = .5) + #<<
+  theme_minimal()
+
+girafe(code = {print(gg_name)}, height_svg = 6, width_svg = 9)
+```
+
+--
+  
+<br/><br/>
+
+On hover functionality with `data_id` and aesthetics `tooltip` and `data_id`
+
+```{r eval=FALSE}
+gg_hover <- ggplot(nc, mapping = aes(x = AREA, y = BIR74)) +
+  geom_point_interactive(aes(data_id = NAME, tooltip = NAME), #<<
+                         size = 4, alpha = .5) +
+  theme_minimal()
+
+girafe(code = {print(gg_hover)}, height_svg = 6, width_svg = 9)
+```
+
+---
+
+## On click functionality
+
+Use aesthetic `onclick`.
+  
+```{r eval=FALSE}
+nc$wiki <- paste0('window.open(\"', "https://www.ncpedia.org/geography/", 
+                  tolower(nc$NAME), '\")')
+
+gg_name <- ggplot(nc, mapping = aes(x = AREA, y = BIR74)) +
+  geom_point_interactive(aes(tooltip = NAME, onclick = wiki), size = 4, alpha = .5) + #<<
+  theme_minimal()
+
+girafe(code = {print(gg_name)})
+```
+
+---
+
+## Package `ggiraph`
+
+- Add tooltips, animations, and JavaScript actions to ggplot graphics
+
+- In general, instead of `geom_<plot_type>()` use
+  `geom_<plot_type>_interactive()`
+
+- Interactivity is added to ggplot geometries, legends and theme elements, 
+  via the following aesthetics:
+    - tooltip: tooltips to be displayed when mouse is over elements.
+    - onclick: JavaScript function to be executed when elements are clicked.
+    - data_id: id to be associated with elements (used for hover and click actions)
+
+- Function `girafe()` translates the graphic into an interactive web-based
+  graphic
+
+- See https://github.com/davidgohel/ggiraph
+
+---
+
+class: inverse, center, middle
+
+# Exercise
+
+---
+
+## Flint water data
+
+Create a visualization of the data from object `flint`. Incorporate topics
+from today's lecture.
+
+```{r}
+flint <- read_csv("http://www2.stat.duke.edu/~sms185/data/health/flint.csv")
+flint
+```
+
+---
+
+## References
+
+1. A Grammar of Animated Graphics. (2020). 
+   https://gganimate.com/
+
+2. Create GIFs with gifski in knitr Documents - Yihui Xie | 谢益辉. (2020).
+   https://yihui.org/en/2018/08/gifski-knitr/
+
+3. davidgohel/ggiraph. (2020).
+   https://github.com/davidgohel/ggiraph
+
+4. erocoar/ggpol. (2020). 
+   https://github.com/erocoar/ggpol
+
+5. Extending ggplot2. (2020). 
+   https://ggplot2.tidyverse.org/articles/extending-ggplot2.html
+
+6. thomasp85/patchwork. (2020).
+   https://github.com/thomasp85/patchwork
+
+7. Top 50 ggplot2 Visualizations - The Master List (With Full R Code). (2020).
+   http://r-statistics.co/Top50-Ggplot2-Visualizations-MasterList-R-Code.html
+
+
+
