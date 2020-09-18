@@ -124,7 +124,7 @@ ggcorrplot(corr = corr_mat, method = "circle", type = "lower", lab = TRUE, #<<
 
 class: inverse, center, middle
 
-# Parliment plots: `ggpol`
+# Parliament plots: `ggpol`
 
 ---
 
@@ -137,7 +137,7 @@ congress
 
 ---
 
-## Parliment plot
+## Parliament plot
 
 .tiny[
 ```{r fig.width=8, fig.height=4}

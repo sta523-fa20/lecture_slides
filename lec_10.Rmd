@@ -1,0 +1,680 @@
+---
+title: "String manipulation and regexes"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Supplementary materials
+
+Companion videos
+
+
+Additional resources
+
+- `stringr` [vignette](https://cran.r-project.org/web/packages/stringr/vignettes/stringr.html)
+- `stringr` [cheat sheet](https://github.com/rstudio/cheatsheets/raw/master/strings.pdf)
+- regex [guide](http://perso.ens-lyon.fr/lise.vaudor/Rfigures/Expressions_regulieres/regexp.png)
+
+---
+
+class: inverse, center, middle
+
+# `stringr`
+
+---
+
+## Why `stringr`?
+
+- Part of `tidyverse`
+
+- Fast and consistent manipulation of string data
+
+- Readable and consistent syntax
+
+- If you master `stringr`, you know `stringi` - http://www.gagolewski.com/software/stringi/
+
+---
+
+## Usage
+
+- All functions in `stringr` start with `str_` and take a vector of strings 
+  as the first argument.
+  
+- Most `stringr` functions work with regular expressions.
+
+- Seven main verbs to work with strings.
+
+.small-text[
+| Function        | Description                                                                    |
+|----------------:|:-------------------------------------------------------------------------------|
+| `str_detect()`  | Detect the presence or absence of a pattern in a string.                       |
+| `str_count()`   | Count the number of patterns.                                                  |
+| `str_locate()`  | Locate the first position of a pattern and return a matrix with start and end. |
+| `str_extract()` | Extracts text corresponding to the first match.                                |
+| `str_match()`   | Extracts capture groups formed by `()` from the first match.                   |
+| `str_split()`   | Splits string into pieces and returns a list of character vectors.             |
+| `str_replace()` | Replaces the first matched pattern and returns a character vector.             |
+]
+<br/>
+Each have leading arguments `string` and `pattern`; all functions are vectorised
+over arguments `string` and `pattern`.
+
+---
+
+class: inverse, center, middle
+
+# Regexs
+
+---
+
+## Simple cases
+
+A regular expression, regex or regexp, is a sequence of characters that 
+define a search pattern.
+
+```{r}
+library(tidyverse)
+```
+
+.small[
+```{r}
+twister <- "thirty-three thieves thought they thrilled the throne Thursday"
+```
+]
+
+--
+
+How many occurrences of `t` exist?
+
+.small[
+```{r}
+str_count(string = twister, pattern = "t")
+```
+]
+
+--
+
+.pull-left[
+How many of `t`, `th`, and `the` exist?
+
+.small[
+```{r}
+str_count(twister, c("t", "th", "the"))
+```
+]
+]
+.pull-right[
+Do these patterns exist?
+
+.small[
+```{r}
+str_detect(twister, c("t", "th", "the"))
+```
+]
+]
+
+---
+
+Separate our long string at each space.
+
+```{r}
+twister_split <- str_split(twister, " ") %>% unlist()
+twister_split
+```
+
+--
+
+<br/>
+
+Do these patterns exist?
+
+```{r}
+str_detect(twister_split, c("tho", "the"))
+```
+
+--
+
+<br/>
+
+Replace certain occurrences.
+
+.small[
+```{r}
+str_replace(twister_split, c("tho", "the"), replacement = c("bro", "Wil"))
+```
+]
+
+---
+
+## A step up in complexity
+
+A `.` matches any character, except a new line. It is one of a few 
+metacharacters - special meaning and function.
+
+.small[
+```{r}
+twister <- "thirty-three thieves thought they thrilled the throne Thursday"
+```
+]
+
+Does this pattern, `.y.` exist?
+
+```{r}
+str_detect(twister, ".y.")
+```
+
+--
+
+How many instances?
+
+```{r}
+str_count(twister, ".y.")
+```
+
+--
+
+View in Viewer pane.
+
+```{r}
+str_view_all(twister, ".y.")
+```
+
+---
+
+## How do we match an actual `.`?
+
+You need to use an escape character to tell the regex you want exact matching.
+
+Regexs use a `\` as an escape character. So why doesn't this work?
+
+```{r error=TRUE}
+str_view_all("show.me.the.dots...", "\.")
+```
+
+---
+
+## R escape characters 
+
+**There are some special characters in R that cannot be directly coded in a 
+string**. An escape character is a character which results in an alternative 
+interpretation of the following character(s). These vary from language to 
+language, but **for most string implementations `\` is the escape character 
+which is modified by a single subsequent character.**
+
+Some common examples:
+
+.small[
+| Literal | Character        |
+|:--------|:-----------------|
+|`\'`     | single quote     |
+|`\"`     | double quote     |
+|`\\`     | backslash        |
+|`\n`     | new line         |
+|`\r`     | carriage return  |
+|`\t`     | tab              |
+|`\b`     | backspace        |
+|`\f`     | form feed        |
+]
+
+???
+
+Escaping a character not in the following table is an error.
+
+| Literal | Character        |
+|:--------|:-----------------|
+|`\n`	| newline  |
+|`\r`	| carriage return  |
+|`\t`	| tab  |
+|`\b`	| backspace  |
+|`\a`	| alert (bell)  |
+|`\f`	| form feed  |
+|`\v`	| vertical tab  |
+|`\\`	| backslash \   |
+|`\'`	| ASCII apostrophe '  |
+|`\"`	| ASCII quotation mark "  |
+|`\\\\``	| ASCII grave accent (backtick) \` |
+|`\nnn` |	character with given octal code (1, 2 or 3 digits)  |
+|`\xnn` |	character with given hex code (1 or 2 hex digits)  |
+|`\unnnn` |	Unicode character with given code (1--4 hex digits)  |
+|`\Unnnnnnnn` |	Unicode character with given code (1--8 hex digits)  |
+
+---
+
+## Examples
+
+.tiny[
+```{r fig.width=9, fig.height=5.5}
+mtcars %>% 
+  ggplot(aes(x = factor(cyl), y = hp)) + ggpol::geom_boxjitter() +
+  labs(x = "Number \n of \n Cylinders", y = "\"Horse\" Power", #<<
+       title = "A \t boxjitter \t\t plot \n showing some escape \n characters") + #<<
+  theme_minimal(base_size = 18)
+```
+]
+
+---
+
+## Examples
+
+```{r error=TRUE}
+print("hello\world")
+```
+
+```{r error=TRUE}
+cat("hello\world")
+```
+
+--
+
+```{r}
+print("hello\tworld")
+```
+
+
+```{r}
+cat("hello\tworld")
+```
+
+---
+
+.pull-left[
+A quote
+
+
+```{r}
+print("hello\"world")
+cat("hello\"world")
+```
+
+
+<br/>
+
+A new line
+
+
+```{r}
+print("hello\nworld")
+cat("hello\nworld")
+```
+
+]
+
+.pull-right[
+A backslash
+
+
+```{r}
+print("hello\\world")
+cat("hello\\world")
+```
+
+]
+
+---
+
+## Returning to: how do we match a `.`?
+
+We need to escape the backslash in our regex of `\`.
+
+```{r error=TRUE}
+str_view_all("show.me.the.dots...", "\\.")
+```
+
+---
+
+## Regex metacharacters
+
+```markdown
+. ^ $ * + ? { } [ ] \ | ( )
+```
+
+Allow for more advanced forms of pattern matching.
+
+<br/>
+
+As we saw with `.`, these cannot be matched directly. Thus, if you want to match
+the literal `?` you will need to use `\\?`.
+
+--
+
+<br/><br/>
+
+What do you need to match a literal `\` in regex pattern matching?
+
+--
+
+```{r}
+str_view_all("find the \\ in this string", "\\\\")
+```
+
+---
+
+## Regex anchors
+
+Sometimes we want to specify that our pattern occurs at a particular 
+location in a string, we indicate this using anchor metacharacters.
+
+<br />
+
+| Regex       | Anchor          |
+|-------------|-----------------|
+| `^` or `\A` | Start of string |
+| `$` or `\Z` | End of string   |
+
+---
+
+## Example: anchors
+
+
+```{r}
+text <- c("Which?", "Witch", "Will", "SWitch?")
+```
+
+
+```{r}
+str_replace(text, "W...", "****")
+str_replace(text, "^W...", "****")
+```
+
+--
+
+<br/>
+
+```{r}
+str_replace(text, "W...h", "****")
+str_replace(text, "W...h$", "****")
+```
+
+---
+
+## Character classes
+
+Special patterns exist to match more than one class.
+
+<br />
+
+| Meta Character | Class       | Description                          |
+|:--------------:|-------------|--------------------------------------|
+|       `.`      |             | Any character except new line (`\n`) |
+|      `\s`      | `[:space:]` | White space (space, tab, newline)    |
+|      `\S`      |             | Not white space                      |
+|      `\d`      | `[:digit:]` | Digit (0-9)                          |
+|      `\D`      |             | Not digit                            |
+|      `\w`      |             | Word (A-Z, a-z, 0-9, or _)           |
+|      `\W`      |             | Not word                             |
+
+---
+
+## Character class overview
+
+<center>
+  <img src="images/regex_char_classes.png" width=450>
+</center>
+
+---
+
+## Ranges
+
+We can also specify our own classes using the square bracket metacharacter.
+
+<br />
+
+| Class    | Type                                |
+|----------|-------------------------------------|
+| `[abc]`  | Class (a or b or c)                 |
+| `[^abc]` | Negated class not (a or b or c)     |
+| `[a-c]`  | Range lower case letter from a to c |
+| `[A-C]`  | Range upper case letter from A to C |
+| `[0-7]`  | Digit between 0 to 7                |
+
+---
+
+## Exercises
+
+Write a regular expression to match a
+
+1. social security number of the form ###-##-####,
+
+2. phone number of the form (###) ###-####,
+
+3. license plate of the form AAA ####.
+
+Test your regexs on some examples with `str_detect()` or `str_view()`.
+
+???
+
+## Solutions
+
+```{r}
+x <- "My info is as follows. Cell: (432)-431-1512. Social security: 432-11-1990"
+y <- "Vehicle info: AEF 2348"
+
+# not the most efficient
+str_view_all(x, "[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]")
+str_view_all(x, "\\([0-9][0-9][0-9]\\)-[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
+str_view_all(y, "[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9]")
+```
+
+---
+
+## Repetition with quantifiers
+
+Attached to literals or character classes, these allow a match to 
+repeat some number of times.
+
+<br />
+
+| Quantifier | Description     |
+|------------|-----------------|
+| `*`        | Match 0 or more |
+| `+`        | Match 1 or more |
+| `?`        | Match 0 or 1    |
+| `{3}`      | Match Exactly 3 |
+| `{3,}`     | Match 3 or more |
+| `{3,5}`    | Match 3, 4 or 5 |
+
+---
+
+## Examples: quantifiers
+
+```{r}
+text <- c("My", "cell: ", "(610)-867-5309")
+```
+
+--
+
+```{r}
+str_detect(text, "\\(\\d{3}\\)-\\d{3}-\\d{4}")
+str_extract(text, "\\(\\d{3}\\)-\\d{3}-\\d{4}")
+```
+
+--
+
+```{r}
+text <- "2 too two 4 for four 8 ate eight"
+```
+
+```{r eval=FALSE}
+str_extract(text, "\\d.*\\d")
+```
+
+
+--
+
+```{r echo=FALSE}
+str_extract(text, "\\d.*\\d")
+```
+
+---
+
+## Greedy matches
+
+By default matches are greedy. This is why we get
+
+```{r echo=FALSE}
+str_extract(text, "\\d.*\\d")
+```
+
+instead of 
+
+```{r echo=FALSE}
+str_extract(text, "\\d.*?\\d")
+```
+
+when we run code
+
+```{r eval=FALSE}
+str_extract(text, "\\d.*\\d")
+```
+
+--
+
+To make matching lazy, include `?` after so you return the shortest substring
+possible.
+
+```{r}
+str_extract(text, "\\d.*?\\d")
+```
+
+--
+
+What will this result be?
+
+```{r eval=FALSE}
+str_extract_all(c("fruit flies", "fly faster"), "[aeiou]{1,2}[a-z]+")
+```
+
+---
+
+## Groups
+
+Groups allow you to connect pieces of a regular 
+expression for modification or capture.
+
+```{r}
+str_extract(c("grey", "gray", "gravitas", "great"), "gre|ay")
+```
+
+--
+
+```{r}
+str_extract(c("grey", "gray", "gravitas", "great"), "grey|gray")
+```
+
+--
+
+```{r}
+str_extract(c("grey", "gray", "gravitas", "great"), "gr(e|a)y")
+```
+
+<br/>
+
+Their use can improve readability and allow for backreferencing.
+
+---
+
+## Capture groups
+
+Suppose we have the following files, where want to capture their name and not
+the file type.
+
+```{r}
+files <- c("dog.png", "cat44.png", "file_0292.png", "notes-v2.png")
+```
+
+--
+
+```{r}
+str_match(files, "(\\w+[[:punct:]]?\\w+)\\.png")
+```
+
+--
+
+Without the parentheses we get
+
+```{r}
+str_match(files, "\\w+[[:punct:]]?\\w+\\.png")
+```
+
+---
+
+## Backreferences
+
+Backreferencing allows us to reference groups with `\1`, `\2`, etc.
+
+```{r}
+text <- "Some numbers include 00, 11, 3434, 41, 1010, 23, and 1"
+```
+
+--
+
+```{r}
+str_match_all(text, "(\\d)\\1")
+```
+
+--
+
+```{r}
+str_match_all(text, "(\\d{2})\\1")
+```
+
+---
+
+## Exercises
+
+```{r}
+text <- c(
+  "apple", 
+  "219 733 8965", 
+  "329-293-8753",
+  "Work: (579) 499-7527; Home: (543) 355 3679"
+)
+```
+
+1. Write a regular expression that will extract all phone numbers contained 
+   in the vector above.
+
+2. Once that works, use groups to extracts the area code separately from the rest
+   of the phone number.
+   
+???
+
+## Solution
+
+```{r}
+str_extract_all(text, "\\(?\\d{3}\\)?[ -]\\d{3}[ -]\\d{4}")
+str_match_all(text, "\\(?(\\d{3})\\)?[ -]\\d{3}[ -]\\d{4}") %>% 
+  purrr::map(~ .[, 2]) %>% 
+  unlist()
+```
+
+---
+
+## References
+
+1. Grolemund, G., & Wickham, H. (2020). R for Data Science. 
+   https://r4ds.had.co.nz/
+
+2. Regular expressions. (2020). Stringr.tidyverse.org.
+   https://stringr.tidyverse.org/articles/regular-expressions.html
+
+3. [Regular-Expression.info](http://www.regular-expressions.info/)
+

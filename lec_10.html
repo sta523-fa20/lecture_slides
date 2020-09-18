@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>String manipulation and regexes</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <script src="libs/htmlwidgets-1.5.1/htmlwidgets.js"></script>
+    <link href="libs/str_view-0.1.0/str_view.css" rel="stylesheet" />
+    <script src="libs/str_view-binding-1.4.0/str_view.js"></script>
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# String manipulation and regexes
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Companion videos
+
+
+Additional resources
+
+- `stringr` [vignette](https://cran.r-project.org/web/packages/stringr/vignettes/stringr.html)
+- `stringr` [cheat sheet](https://github.com/rstudio/cheatsheets/raw/master/strings.pdf)
+- regex [guide](http://perso.ens-lyon.fr/lise.vaudor/Rfigures/Expressions_regulieres/regexp.png)
+
+---
+
+class: inverse, center, middle
+
+# `stringr`
+
+---
+
+## Why `stringr`?
+
+- Part of `tidyverse`
+
+- Fast and consistent manipulation of string data
+
+- Readable and consistent syntax
+
+- If you master `stringr`, you know `stringi` - http://www.gagolewski.com/software/stringi/
+
+---
+
+## Usage
+
+- All functions in `stringr` start with `str_` and take a vector of strings 
+  as the first argument.
+  
+- Most `stringr` functions work with regular expressions.
+
+- Seven main verbs to work with strings.
+
+.small-text[
+| Function        | Description                                                                    |
+|----------------:|:-------------------------------------------------------------------------------|
+| `str_detect()`  | Detect the presence or absence of a pattern in a string.                       |
+| `str_count()`   | Count the number of patterns.                                                  |
+| `str_locate()`  | Locate the first position of a pattern and return a matrix with start and end. |
+| `str_extract()` | Extracts text corresponding to the first match.                                |
+| `str_match()`   | Extracts capture groups formed by `()` from the first match.                   |
+| `str_split()`   | Splits string into pieces and returns a list of character vectors.             |
+| `str_replace()` | Replaces the first matched pattern and returns a character vector.             |
+]
+&lt;br/&gt;
+Each have leading arguments `string` and `pattern`; all functions are vectorised
+over arguments `string` and `pattern`.
+
+---
+
+class: inverse, center, middle
+
+# Regexs
+
+---
+
+## Simple cases
+
+A regular expression, regex or regexp, is a sequence of characters that 
+define a search pattern.
+
+
+```r
+library(tidyverse)
+```
+
+.small[
+
+```r
+twister &lt;- "thirty-three thieves thought they thrilled the throne Thursday"
+```
+]
+
+--
+
+How many occurrences of `t` exist?
+
+.small[
+
+```r
+str_count(string = twister, pattern = "t")
+```
+
+```
+#&gt; [1] 10
+```
+]
+
+--
+
+.pull-left[
+How many of `t`, `th`, and `the` exist?
+
+.small[
+
+```r
+str_count(twister, c("t", "th", "the"))
+```
+
+```
+#&gt; [1] 10  8  2
+```
+]
+]
+.pull-right[
+Do these patterns exist?
+
+.small[
+
+```r
+str_detect(twister, c("t", "th", "the"))
+```
+
+```
+#&gt; [1] TRUE TRUE TRUE
+```
+]
+]
+
+---
+
+Separate our long string at each space.
+
+
+```r
+twister_split &lt;- str_split(twister, " ") %&gt;% unlist()
+twister_split
+```
+
+```
+#&gt; [1] "thirty-three" "thieves"      "thought"      "they"         "thrilled"    
+#&gt; [6] "the"          "throne"       "Thursday"
+```
+
+--
+
+&lt;br/&gt;
+
+Do these patterns exist?
+
+
+```r
+str_detect(twister_split, c("tho", "the"))
+```
+
+```
+#&gt; [1] FALSE FALSE  TRUE  TRUE FALSE  TRUE FALSE FALSE
+```
+
+--
+
+&lt;br/&gt;
+
+Replace certain occurrences.
+
+.small[
+
+```r
+str_replace(twister_split, c("tho", "the"), replacement = c("bro", "Wil"))
+```
+
+```
+#&gt; [1] "thirty-three" "thieves"      "brought"      "Wily"         "thrilled"    
+#&gt; [6] "Wil"          "throne"       "Thursday"
+```
+]
+
+---
+
+## A step up in complexity
+
+A `.` matches any character, except a new line. It is one of a few 
+metacharacters - special meaning and function.
+
+.small[
+
+```r
+twister &lt;- "thirty-three thieves thought they thrilled the throne Thursday"
+```
+]
+
+Does this pattern, `.y.` exist?
+
+
+```r
+str_detect(twister, ".y.")
+```
+
+```
+#&gt; [1] TRUE
+```
+
+--
+
+How many instances?
+
+
+```r
+str_count(twister, ".y.")
+```
+
+```
+#&gt; [1] 2
+```
+
+--
+
+View in Viewer pane.
+
+
+```r
+str_view_all(twister, ".y.")
+```
+
+<div id="htmlwidget-880581a450c85368c744" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-880581a450c85368c744">{"x":{"html":"<ul>\n  <li>thir<span class='match'>ty-<\/span>three thieves thought th<span class='match'>ey <\/span>thrilled the throne Thursday<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+## How do we match an actual `.`?
+
+You need to use an escape character to tell the regex you want exact matching.
+
+Regexs use a `\` as an escape character. So why doesn't this work?
+
+
+```r
+str_view_all("show.me.the.dots...", "\.")
+```
+
+```
+#&gt; Error: '\.' is an unrecognized escape in character string starting ""\."
+```
+
+---
+
+## R escape characters 
+
+**There are some special characters in R that cannot be directly coded in a 
+string**. An escape character is a character which results in an alternative 
+interpretation of the following character(s). These vary from language to 
+language, but **for most string implementations `\` is the escape character 
+which is modified by a single subsequent character.**
+
+Some common examples:
+
+.small[
+| Literal | Character        |
+|:--------|:-----------------|
+|`\'`     | single quote     |
+|`\"`     | double quote     |
+|`\\`     | backslash        |
+|`\n`     | new line         |
+|`\r`     | carriage return  |
+|`\t`     | tab              |
+|`\b`     | backspace        |
+|`\f`     | form feed        |
+]
+
+???
+
+Escaping a character not in the following table is an error.
+
+| Literal | Character        |
+|:--------|:-----------------|
+|`\n`	| newline  |
+|`\r`	| carriage return  |
+|`\t`	| tab  |
+|`\b`	| backspace  |
+|`\a`	| alert (bell)  |
+|`\f`	| form feed  |
+|`\v`	| vertical tab  |
+|`\\`	| backslash \   |
+|`\'`	| ASCII apostrophe '  |
+|`\"`	| ASCII quotation mark "  |
+|`\\\\``	| ASCII grave accent (backtick) \` |
+|`\nnn` |	character with given octal code (1, 2 or 3 digits)  |
+|`\xnn` |	character with given hex code (1 or 2 hex digits)  |
+|`\unnnn` |	Unicode character with given code (1--4 hex digits)  |
+|`\Unnnnnnnn` |	Unicode character with given code (1--8 hex digits)  |
+
+---
+
+## Examples
+
+.tiny[
+
+```r
+mtcars %&gt;% 
+  ggplot(aes(x = factor(cyl), y = hp)) + ggpol::geom_boxjitter() +
+* labs(x = "Number \n of \n Cylinders", y = "\"Horse\" Power",
+*      title = "A \t boxjitter \t\t plot \n showing some escape \n characters") +
+  theme_minimal(base_size = 18)
+```
+
+&lt;img src="lec_10_files/figure-html/unnamed-chunk-15-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+## Examples
+
+
+```r
+print("hello\world")
+```
+
+```
+#&gt; Error: '\w' is an unrecognized escape in character string starting ""hello\w"
+```
+
+
+```r
+cat("hello\world")
+```
+
+```
+#&gt; Error: '\w' is an unrecognized escape in character string starting ""hello\w"
+```
+
+--
+
+
+```r
+print("hello\tworld")
+```
+
+```
+#&gt; [1] "hello\tworld"
+```
+
+
+
+```r
+cat("hello\tworld")
+```
+
+```
+#&gt; hello	world
+```
+
+---
+
+.pull-left[
+A quote
+
+
+
+```r
+print("hello\"world")
+```
+
+```
+#&gt; [1] "hello\"world"
+```
+
+```r
+cat("hello\"world")
+```
+
+```
+#&gt; hello"world
+```
+
+
+&lt;br/&gt;
+
+A new line
+
+
+
+```r
+print("hello\nworld")
+```
+
+```
+#&gt; [1] "hello\nworld"
+```
+
+```r
+cat("hello\nworld")
+```
+
+```
+#&gt; hello
+#&gt; world
+```
+
+]
+
+.pull-right[
+A backslash
+
+
+
+```r
+print("hello\\world")
+```
+
+```
+#&gt; [1] "hello\\world"
+```
+
+```r
+cat("hello\\world")
+```
+
+```
+#&gt; hello\world
+```
+
+]
+
+---
+
+## Returning to: how do we match a `.`?
+
+We need to escape the backslash in our regex of `\`.
+
+
+```r
+str_view_all("show.me.the.dots...", "\\.")
+```
+
+<div id="htmlwidget-cff878fa09d3396a06e8" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-cff878fa09d3396a06e8">{"x":{"html":"<ul>\n  <li>show<span class='match'>.<\/span>me<span class='match'>.<\/span>the<span class='match'>.<\/span>dots<span class='match'>.<\/span><span class='match'>.<\/span><span class='match'>.<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+## Regex metacharacters
+
+```markdown
+. ^ $ * + ? { } [ ] \ | ( )
+```
+
+Allow for more advanced forms of pattern matching.
+
+&lt;br/&gt;
+
+As we saw with `.`, these cannot be matched directly. Thus, if you want to match
+the literal `?` you will need to use `\\?`.
+
+--
+
+&lt;br/&gt;&lt;br/&gt;
+
+What do you need to match a literal `\` in regex pattern matching?
+
+--
+
+
+```r
+str_view_all("find the \\ in this string", "\\\\")
+```
+
+<div id="htmlwidget-0f1bab4531c78d6e4eff" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-0f1bab4531c78d6e4eff">{"x":{"html":"<ul>\n  <li>find the <span class='match'>\\<\/span> in this string<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+## Regex anchors
+
+Sometimes we want to specify that our pattern occurs at a particular 
+location in a string, we indicate this using anchor metacharacters.
+
+&lt;br /&gt;
+
+| Regex       | Anchor          |
+|-------------|-----------------|
+| `^` or `\A` | Start of string |
+| `$` or `\Z` | End of string   |
+
+---
+
+## Example: anchors
+
+
+
+```r
+text &lt;- c("Which?", "Witch", "Will", "SWitch?")
+```
+
+
+
+```r
+str_replace(text, "W...", "****")
+```
+
+```
+#&gt; [1] "****h?"  "****h"   "****"    "S****h?"
+```
+
+```r
+str_replace(text, "^W...", "****")
+```
+
+```
+#&gt; [1] "****h?"  "****h"   "****"    "SWitch?"
+```
+
+--
+
+&lt;br/&gt;
+
+
+```r
+str_replace(text, "W...h", "****")
+```
+
+```
+#&gt; [1] "****?"  "****"   "Will"   "S****?"
+```
+
+```r
+str_replace(text, "W...h$", "****")
+```
+
+```
+#&gt; [1] "Which?"  "****"    "Will"    "SWitch?"
+```
+
+---
+
+## Character classes
+
+Special patterns exist to match more than one class.
+
+&lt;br /&gt;
+
+| Meta Character | Class       | Description                          |
+|:--------------:|-------------|--------------------------------------|
+|       `.`      |             | Any character except new line (`\n`) |
+|      `\s`      | `[:space:]` | White space (space, tab, newline)    |
+|      `\S`      |             | Not white space                      |
+|      `\d`      | `[:digit:]` | Digit (0-9)                          |
+|      `\D`      |             | Not digit                            |
+|      `\w`      |             | Word (A-Z, a-z, 0-9, or _)           |
+|      `\W`      |             | Not word                             |
+
+---
+
+## Character class overview
+
+&lt;center&gt;
+  &lt;img src="images/regex_char_classes.png" width=450&gt;
+&lt;/center&gt;
+
+---
+
+## Ranges
+
+We can also specify our own classes using the square bracket metacharacter.
+
+&lt;br /&gt;
+
+| Class    | Type                                |
+|----------|-------------------------------------|
+| `[abc]`  | Class (a or b or c)                 |
+| `[^abc]` | Negated class not (a or b or c)     |
+| `[a-c]`  | Range lower case letter from a to c |
+| `[A-C]`  | Range upper case letter from A to C |
+| `[0-7]`  | Digit between 0 to 7                |
+
+---
+
+## Exercises
+
+Write a regular expression to match a
+
+1. social security number of the form ###-##-####,
+
+2. phone number of the form (###) ###-####,
+
+3. license plate of the form AAA ####.
+
+Test your regexs on some examples with `str_detect()` or `str_view()`.
+
+???
+
+## Solutions
+
+
+```r
+x &lt;- "My info is as follows. Cell: (432)-431-1512. Social security: 432-11-1990"
+y &lt;- "Vehicle info: AEF 2348"
+
+# not the most efficient
+str_view_all(x, "[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]")
+```
+
+<div id="htmlwidget-f6f6dba211c32c2ffeb7" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f6f6dba211c32c2ffeb7">{"x":{"html":"<ul>\n  <li>My info is as follows. Cell: (432)-431-1512. Social security: <span class='match'>432-11-1990<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+```r
+str_view_all(x, "\\([0-9][0-9][0-9]\\)-[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
+```
+
+<div id="htmlwidget-536ff7942129d31f55fb" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-536ff7942129d31f55fb">{"x":{"html":"<ul>\n  <li>My info is as follows. Cell: <span class='match'>(432)-431-1512<\/span>. Social security: 432-11-1990<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+```r
+str_view_all(y, "[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9]")
+```
+
+<div id="htmlwidget-e498e3ba149c70e398b7" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-e498e3ba149c70e398b7">{"x":{"html":"<ul>\n  <li>Vehicle info: <span class='match'>AEF 2348<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+## Repetition with quantifiers
+
+Attached to literals or character classes, these allow a match to 
+repeat some number of times.
+
+&lt;br /&gt;
+
+| Quantifier | Description     |
+|------------|-----------------|
+| `*`        | Match 0 or more |
+| `+`        | Match 1 or more |
+| `?`        | Match 0 or 1    |
+| `{3}`      | Match Exactly 3 |
+| `{3,}`     | Match 3 or more |
+| `{3,5}`    | Match 3, 4 or 5 |
+
+---
+
+## Examples: quantifiers
+
+
+```r
+text &lt;- c("My", "cell: ", "(610)-867-5309")
+```
+
+--
+
+
+```r
+str_detect(text, "\\(\\d{3}\\)-\\d{3}-\\d{4}")
+```
+
+```
+#&gt; [1] FALSE FALSE  TRUE
+```
+
+```r
+str_extract(text, "\\(\\d{3}\\)-\\d{3}-\\d{4}")
+```
+
+```
+#&gt; [1] NA               NA               "(610)-867-5309"
+```
+
+--
+
+
+```r
+text &lt;- "2 too two 4 for four 8 ate eight"
+```
+
+
+```r
+str_extract(text, "\\d.*\\d")
+```
+
+
+--
+
+
+```
+#&gt; [1] "2 too two 4 for four 8"
+```
+
+---
+
+## Greedy matches
+
+By default matches are greedy. This is why we get
+
+
+```
+#&gt; [1] "2 too two 4 for four 8"
+```
+
+instead of 
+
+
+```
+#&gt; [1] "2 too two 4"
+```
+
+when we run code
+
+
+```r
+str_extract(text, "\\d.*\\d")
+```
+
+--
+
+To make matching lazy, include `?` after so you return the shortest substring
+possible.
+
+
+```r
+str_extract(text, "\\d.*?\\d")
+```
+
+```
+#&gt; [1] "2 too two 4"
+```
+
+--
+
+What will this result be?
+
+
+```r
+str_extract_all(c("fruit flies", "fly faster"), "[aeiou]{1,2}[a-z]+")
+```
+
+---
+
+## Groups
+
+Groups allow you to connect pieces of a regular 
+expression for modification or capture.
+
+
+```r
+str_extract(c("grey", "gray", "gravitas", "great"), "gre|ay")
+```
+
+```
+#&gt; [1] "gre" "ay"  NA    "gre"
+```
+
+--
+
+
+```r
+str_extract(c("grey", "gray", "gravitas", "great"), "grey|gray")
+```
+
+```
+#&gt; [1] "grey" "gray" NA     NA
+```
+
+--
+
+
+```r
+str_extract(c("grey", "gray", "gravitas", "great"), "gr(e|a)y")
+```
+
+```
+#&gt; [1] "grey" "gray" NA     NA
+```
+
+&lt;br/&gt;
+
+Their use can improve readability and allow for backreferencing.
+
+---
+
+## Capture groups
+
+Suppose we have the following files, where want to capture their name and not
+the file type.
+
+
+```r
+files &lt;- c("dog.png", "cat44.png", "file_0292.png", "notes-v2.png")
+```
+
+--
+
+
+```r
+str_match(files, "(\\w+[[:punct:]]?\\w+)\\.png")
+```
+
+```
+#&gt;      [,1]            [,2]       
+#&gt; [1,] "dog.png"       "dog"      
+#&gt; [2,] "cat44.png"     "cat44"    
+#&gt; [3,] "file_0292.png" "file_0292"
+#&gt; [4,] "notes-v2.png"  "notes-v2"
+```
+
+--
+
+Without the parentheses we get
+
+
+```r
+str_match(files, "\\w+[[:punct:]]?\\w+\\.png")
+```
+
+```
+#&gt;      [,1]           
+#&gt; [1,] "dog.png"      
+#&gt; [2,] "cat44.png"    
+#&gt; [3,] "file_0292.png"
+#&gt; [4,] "notes-v2.png"
+```
+
+---
+
+## Backreferences
+
+Backreferencing allows us to reference groups with `\1`, `\2`, etc.
+
+
+```r
+text &lt;- "Some numbers include 00, 11, 3434, 41, 1010, 23, and 1"
+```
+
+--
+
+
+```r
+str_match_all(text, "(\\d)\\1")
+```
+
+```
+#&gt; [[1]]
+#&gt;      [,1] [,2]
+#&gt; [1,] "00" "0" 
+#&gt; [2,] "11" "1"
+```
+
+--
+
+
+```r
+str_match_all(text, "(\\d{2})\\1")
+```
+
+```
+#&gt; [[1]]
+#&gt;      [,1]   [,2]
+#&gt; [1,] "3434" "34"
+#&gt; [2,] "1010" "10"
+```
+
+---
+
+## Exercises
+
+
+```r
+text &lt;- c(
+  "apple", 
+  "219 733 8965", 
+  "329-293-8753",
+  "Work: (579) 499-7527; Home: (543) 355 3679"
+)
+```
+
+1. Write a regular expression that will extract all phone numbers contained 
+   in the vector above.
+
+2. Once that works, use groups to extracts the area code separately from the rest
+   of the phone number.
+   
+???
+
+## Solution
+
+
+```r
+str_extract_all(text, "\\(?\\d{3}\\)?[ -]\\d{3}[ -]\\d{4}")
+```
+
+```
+#&gt; [[1]]
+#&gt; character(0)
+#&gt; 
+#&gt; [[2]]
+#&gt; [1] "219 733 8965"
+#&gt; 
+#&gt; [[3]]
+#&gt; [1] "329-293-8753"
+#&gt; 
+#&gt; [[4]]
+#&gt; [1] "(579) 499-7527" "(543) 355 3679"
+```
+
+```r
+str_match_all(text, "\\(?(\\d{3})\\)?[ -]\\d{3}[ -]\\d{4}") %&gt;% 
+  purrr::map(~ .[, 2]) %&gt;% 
+  unlist()
+```
+
+```
+#&gt; [1] "219" "329" "579" "543"
+```
+
+---
+
+## References
+
+1. Grolemund, G., &amp; Wickham, H. (2020). R for Data Science. 
+   https://r4ds.had.co.nz/
+
+2. Regular expressions. (2020). Stringr.tidyverse.org.
+   https://stringr.tidyverse.org/articles/regular-expressions.html
+
+3. [Regular-Expression.info](http://www.regular-expressions.info/)
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -14,7 +14,7 @@ images and the CSS file for reproducibility.
 | Week 4  | Wed, Sep 09 | Functionals with purrr                 |  :white_check_mark:     |
 |         | Fri, Sep 11 | Statistical graphics with ggplot2      |  :white_check_mark:     |
 | Week 5  | Wed, Sep 16 | Advanced visualizations                |  :white_check_mark:     |
-|         | Fri, Sep 18 | String manipulation and regexes        |                         |
+|         | Fri, Sep 18 | String manipulation and regexes        |  :white_check_mark:     |
 | Week 6  | Wed, Sep 23 | Spatial data with sf                   |                         |
 |         | Fri, Sep 25 | Web scraping part I                    |                         |
 | Week 7  | Wed, Sep 30 | Web scraping part II                   |                         |
