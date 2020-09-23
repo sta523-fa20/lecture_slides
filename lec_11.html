@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Spatial data with sf</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Spatial data with sf
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- Simple Features for R [vignettes](https://r-spatial.github.io/sf/)
+- [CRS in R](https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/OverviewCoordinateReferenceSystems.pdf) 
+  by Melanie Frazier
+- [Leaflet for R](https://rstudio.github.io/leaflet/)
+
+---
+
+class: inverse, center, middle
+
+# Introduction
+
+---
+
+## Spatial data is different
+
+Our **typical tidy data frame**:
+
+.tiny[
+
+```
+#&gt; # A tibble: 336,776 x 19
+#&gt;     year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time
+#&gt;    &lt;int&gt; &lt;int&gt; &lt;int&gt;    &lt;int&gt;          &lt;int&gt;     &lt;dbl&gt;    &lt;int&gt;          &lt;int&gt;
+#&gt;  1  2013     1     1      517            515         2      830            819
+#&gt;  2  2013     1     1      533            529         4      850            830
+#&gt;  3  2013     1     1      542            540         2      923            850
+#&gt;  4  2013     1     1      544            545        -1     1004           1022
+#&gt;  5  2013     1     1      554            600        -6      812            837
+#&gt;  6  2013     1     1      554            558        -4      740            728
+#&gt;  7  2013     1     1      555            600        -5      913            854
+#&gt;  8  2013     1     1      557            600        -3      709            723
+#&gt;  9  2013     1     1      557            600        -3      838            846
+#&gt; 10  2013     1     1      558            600        -2      753            745
+#&gt; # … with 336,766 more rows, and 11 more variables: arr_delay &lt;dbl&gt;,
+#&gt; #   carrier &lt;chr&gt;, flight &lt;int&gt;, tailnum &lt;chr&gt;, origin &lt;chr&gt;, dest &lt;chr&gt;,
+#&gt; #   air_time &lt;dbl&gt;, distance &lt;dbl&gt;, hour &lt;dbl&gt;, minute &lt;dbl&gt;, time_hour &lt;dttm&gt;
+```
+]
+
+---
+
+## Spatial data is different
+
+A **simple features object**:
+
+.tiny[
+
+```
+#&gt; Simple feature collection with 100 features and 5 fields
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: -84.32385 ymin: 33.88199 xmax: -75.45698 ymax: 36.58965
+#&gt; geographic CRS: NAD27
+#&gt; First 10 features:
+#&gt;     AREA PERIMETER CNTY_ CNTY_ID        NAME                       geometry
+#&gt; 1  0.114     1.442  1825    1825        Ashe MULTIPOLYGON (((-81.47276 3...
+#&gt; 2  0.061     1.231  1827    1827   Alleghany MULTIPOLYGON (((-81.23989 3...
+#&gt; 3  0.143     1.630  1828    1828       Surry MULTIPOLYGON (((-80.45634 3...
+#&gt; 4  0.070     2.968  1831    1831   Currituck MULTIPOLYGON (((-76.00897 3...
+#&gt; 5  0.153     2.206  1832    1832 Northampton MULTIPOLYGON (((-77.21767 3...
+#&gt; 6  0.097     1.670  1833    1833    Hertford MULTIPOLYGON (((-76.74506 3...
+#&gt; 7  0.062     1.547  1834    1834      Camden MULTIPOLYGON (((-76.00897 3...
+#&gt; 8  0.091     1.284  1835    1835       Gates MULTIPOLYGON (((-76.56251 3...
+#&gt; 9  0.118     1.421  1836    1836      Warren MULTIPOLYGON (((-78.30876 3...
+#&gt; 10 0.124     1.428  1837    1837      Stokes MULTIPOLYGON (((-80.02567 3...
+```
+]
+
+---
+
+Another simple features object:
+
+.tiny[
+
+```
+#&gt; Simple feature collection with 94 features and 1 field
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: 127456.7 ymin: 26544.91 xmax: 923528.7 ymax: 318097.4
+#&gt; projected CRS:  NAD83 / North Carolina
+#&gt; # A tibble: 94 x 2
+#&gt;    GML_HAB                                                              geometry
+#&gt;    &lt;chr&gt;                                                      &lt;MULTIPOLYGON [m]&gt;
+#&gt;  1 Alcoa               (((512096.2 183241.7, 512185.7 183203.4, 512226 183186.2…
+#&gt;  2 Alligator River     (((869633.1 244541.9, 869739.4 243987.6, 869762.7 243999…
+#&gt;  3 Angola Bay          (((713079.4 113954.7, 713110.9 113878.7, 713133.1 113925…
+#&gt;  4 Bachelor Bay        (((813742.2 238618.7, 813730 238603.2, 813693.8 238525.7…
+#&gt;  5 Bertie County       (((797133.8 247034.5, 797119.5 247030, 797112.2 247027.7…
+#&gt;  6 Bladen Lakes State… (((658970.6 95406.32, 660025.1 94245.76, 659839.4 94144.…
+#&gt;  7 Brinkleyville       (((714741 276970.3, 714623.9 276970, 714622.1 277000, 71…
+#&gt;  8 Buckhorn            (((589723.7 253224.6, 589568.5 252937.2, 589689.8 252937…
+#&gt;  9 Buckridge           (((871137.4 219894.9, 871124.9 219827.8, 871124.2 219828…
+#&gt; 10 Buffalo Cove        (((381445.9 260375.4, 381574.9 259668.3, 381915 259796.3…
+#&gt; # … with 84 more rows
+```
+]
+
+---
+
+## Spatial data plotting needs care
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-5-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-6-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-7-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+class: center, middle
+
+## Can we combine the two plots?
+
+---
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-8-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+Where are the game lands?
+
+---
+
+class: center, middle
+
+## We can, but more care is needed.
+
+---
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-9-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Spatial data challenges
+
+1. Different data types exist.
+
+2. Special attention must be given to the coordinate reference system (CRS).
+
+3. Manipulating spatial data objects is similar but not identical to 
+   manipulating data frame objects.
+   
+---
+
+class: inverse, center, middle
+
+# Spatial data and R
+
+---
+
+## Analysis of spatial data in R
+
+.pull-left[
+
+&lt;br/&gt;
+
+- Package `raster` contains classes and tools for handling spatial raster data.
+
+&lt;br/&gt;&lt;br/&gt;
+
+- Package `sf` combines the functionality of `sp`, `rgdal`, and `rgeos` 
+  into a single package based on tidy simple features.
+
+]
+
+.pull-right[
+
+![](images/vector_raster_comparison.png)
+
+
+]
+
+&lt;br/&gt;
+
+Whether or not you use vector or raster data depends on the type of problem 
+and the data source. Our focus will be on vector data and package `sf`. 
+
+*Source:* https://commons.wikimedia.org/wiki/File:Raster_vector_tikz.png
+
+---
+
+## Installing package `sf`
+
+From https://r-spatial.github.io/sf/index.html
+
+**Windows**
+
+Installing `sf` from source works under windows when Rtools is installed. 
+This downloads the system requirements from rwinlib.
+
+**MacOS**
+
+```bash
+brew install pkg-config
+brew install gdal
+```
+Once gdal is installed, you will be able to install sf package from source in R.
+
+**Linux**
+
+For Unix-alikes, GDAL (&gt;= 2.0.1), GEOS (&gt;= 3.4.0) and Proj.4 (&gt;= 4.8.0) are 
+required.
+
+---
+
+## Features and simple features
+
+- A **feature** is a thing or object in the real world: a house, a city, a park,
+  a forest, etc.
+&lt;br/&gt;&lt;br/&gt;
+- A **simple feature** as defined by OpenGIS Abstract specification is to have 
+  both spatial and non-spatial attributes. Spatial attributes are geometry 
+  valued, and simple features are based on 2D geometry with linear 
+  interpolation between vertices.
+&lt;br/&gt;&lt;br/&gt;
+
+.tiny[
+
+```r
+Simple feature collection with 100 features and 1 field
+geometry type:  MULTIPOLYGON
+dimension:      XY
+bbox:           xmin: 123829.8 ymin: 14740.06 xmax: 930518.6 ymax: 318255.5
+projected CRS:  NAD83 / North Carolina
+First 10 features:
+          NAME                       geometry
+*1         Ashe MULTIPOLYGON (((387344.7 27...
+2    Alleghany MULTIPOLYGON (((408601.4 29...
+3        Surry MULTIPOLYGON (((478715.7 27...
+4    Currituck MULTIPOLYGON (((878193.4 28...
+5  Northampton MULTIPOLYGON (((769834.9 27...
+6     Hertford MULTIPOLYGON (((812327.7 27...
+7       Camden MULTIPOLYGON (((878193.4 28...
+8        Gates MULTIPOLYGON (((828444.5 29...
+9       Warren MULTIPOLYGON (((671746.3 27...
+10      Stokes MULTIPOLYGON (((517435.1 27...
+```
+]
+
+---
+
+## Simple features examples
+
+
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-12-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+
+## `sf` objects
+
+.tiny[
+
+```r
+nc &lt;- st_read(system.file("shape/nc.shp", package = "sf"), quiet = TRUE)
+nc
+```
+
+```
+#&gt; Simple feature collection with 100 features and 14 fields
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: -84.32385 ymin: 33.88199 xmax: -75.45698 ymax: 36.58965
+#&gt; geographic CRS: NAD27
+#&gt; First 10 features:
+#&gt;     AREA PERIMETER CNTY_ CNTY_ID        NAME  FIPS FIPSNO CRESS_ID BIR74 SID74
+#&gt; 1  0.114     1.442  1825    1825        Ashe 37009  37009        5  1091     1
+#&gt; 2  0.061     1.231  1827    1827   Alleghany 37005  37005        3   487     0
+#&gt; 3  0.143     1.630  1828    1828       Surry 37171  37171       86  3188     5
+#&gt; 4  0.070     2.968  1831    1831   Currituck 37053  37053       27   508     1
+#&gt; 5  0.153     2.206  1832    1832 Northampton 37131  37131       66  1421     9
+#&gt; 6  0.097     1.670  1833    1833    Hertford 37091  37091       46  1452     7
+#&gt; 7  0.062     1.547  1834    1834      Camden 37029  37029       15   286     0
+#&gt; 8  0.091     1.284  1835    1835       Gates 37073  37073       37   420     0
+#&gt; 9  0.118     1.421  1836    1836      Warren 37185  37185       93   968     4
+#&gt; 10 0.124     1.428  1837    1837      Stokes 37169  37169       85  1612     1
+#&gt;    NWBIR74 BIR79 SID79 NWBIR79                       geometry
+#&gt; 1       10  1364     0      19 MULTIPOLYGON (((-81.47276 3...
+#&gt; 2       10   542     3      12 MULTIPOLYGON (((-81.23989 3...
+#&gt; 3      208  3616     6     260 MULTIPOLYGON (((-80.45634 3...
+#&gt; 4      123   830     2     145 MULTIPOLYGON (((-76.00897 3...
+#&gt; 5     1066  1606     3    1197 MULTIPOLYGON (((-77.21767 3...
+#&gt; 6      954  1838     5    1237 MULTIPOLYGON (((-76.74506 3...
+#&gt; 7      115   350     2     139 MULTIPOLYGON (((-76.00897 3...
+#&gt; 8      254   594     2     371 MULTIPOLYGON (((-76.56251 3...
+#&gt; 9      748  1190     2     844 MULTIPOLYGON (((-78.30876 3...
+#&gt; 10     160  2038     5     176 MULTIPOLYGON (((-80.02567 3...
+```
+]
+
+---
+
+## Class and other attributes: `sf`
+
+
+```r
+class(nc)
+```
+
+```
+#&gt; [1] "sf"         "data.frame"
+```
+
+
+```r
+names(attributes(nc))
+```
+
+```
+#&gt; [1] "names"     "row.names" "class"     "sf_column" "agr"
+```
+
+
+---
+
+## `sfc` objects
+
+
+```r
+nc_polygons &lt;- st_geometry(nc)
+nc_polygons
+```
+
+```
+#&gt; Geometry set for 100 features 
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: -84.32385 ymin: 33.88199 xmax: -75.45698 ymax: 36.58965
+#&gt; geographic CRS: NAD27
+#&gt; First 5 geometries:
+```
+
+---
+
+## Class and other attributes: `sfc`
+
+
+```r
+class(nc_polygons)
+```
+
+```
+#&gt; [1] "sfc_MULTIPOLYGON" "sfc"
+```
+
+
+```r
+names(attributes(nc_polygons))
+```
+
+```
+#&gt; [1] "n_empty"   "crs"       "class"     "precision" "bbox"
+```
+
+&lt;br/&gt;
+
+--
+
+We see that `nc` has a class attribute `sf`, and object `nc_polygons` has a
+class attribute `sfc`. What methods are available?
+
+---
+
+
+```r
+methods(class = "sf")
+```
+
+```
+#&gt;  [1] [                     [[&lt;-                  $&lt;-                  
+#&gt;  [4] aggregate             anti_join             arrange              
+#&gt;  [7] as.data.frame         cbind                 coerce               
+#&gt; [10] dbDataType            dbWriteTable          distinct             
+#&gt; [13] dplyr_reconstruct     filter                full_join            
+#&gt; [16] gather                group_by              group_split          
+#&gt; [19] identify              initialize            inner_join           
+#&gt; [22] left_join             mapView               merge                
+#&gt; [25] mutate                nest                  plot                 
+#&gt; [28] print                 rbind                 rename               
+#&gt; [31] right_join            sample_frac           sample_n             
+#&gt; [34] select                semi_join             separate_rows        
+#&gt; [37] separate              show                  slice                
+#&gt; [40] slotsFromS3           spread                st_agr               
+#&gt; [43] st_agr&lt;-              st_area               st_as_s2             
+#&gt; [46] st_as_sf              st_bbox               st_boundary          
+#&gt; [49] st_buffer             st_cast               st_centroid          
+#&gt; [52] st_collection_extract st_convex_hull        st_coordinates       
+#&gt; [55] st_crop               st_crs                st_crs&lt;-             
+#&gt; [58] st_difference         st_filter             st_geometry          
+#&gt; [61] st_geometry&lt;-         st_interpolate_aw     st_intersection      
+#&gt; [64] st_intersects         st_is_valid           st_is                
+#&gt; [67] st_join               st_line_merge         st_m_range           
+#&gt; [70] st_make_valid         st_nearest_points     st_node              
+#&gt; [73] st_normalize          st_point_on_surface   st_polygonize        
+#&gt; [76] st_precision          st_reverse            st_sample            
+#&gt; [79] st_segmentize         st_set_precision      st_shift_longitude   
+#&gt; [82] st_simplify           st_snap               st_sym_difference    
+#&gt; [85] st_transform          st_triangulate        st_union             
+#&gt; [88] st_voronoi            st_wrap_dateline      st_write             
+#&gt; [91] st_z_range            st_zm                 summarise            
+#&gt; [94] transform             transmute             ungroup              
+#&gt; [97] unite                 unnest               
+#&gt; see '?methods' for accessing help and source code
+```
+
+---
+
+
+```r
+methods(class = "sfc")
+```
+
+```
+#&gt;  [1] [                     [&lt;-                   as.data.frame        
+#&gt;  [4] c                     coerce                format               
+#&gt;  [7] fortify               identify              initialize           
+#&gt; [10] mapView               obj_sum               Ops                  
+#&gt; [13] print                 rep                   scale_type           
+#&gt; [16] show                  slotsFromS3           st_area              
+#&gt; [19] st_as_binary          st_as_grob            st_as_s2             
+#&gt; [22] st_as_sf              st_as_text            st_bbox              
+#&gt; [25] st_boundary           st_buffer             st_cast              
+#&gt; [28] st_centroid           st_collection_extract st_convex_hull       
+#&gt; [31] st_coordinates        st_crop               st_crs               
+#&gt; [34] st_crs&lt;-              st_difference         st_geometry          
+#&gt; [37] st_intersection       st_intersects         st_is_valid          
+#&gt; [40] st_is                 st_line_merge         st_m_range           
+#&gt; [43] st_make_valid         st_nearest_points     st_node              
+#&gt; [46] st_normalize          st_point_on_surface   st_polygonize        
+#&gt; [49] st_precision          st_reverse            st_sample            
+#&gt; [52] st_segmentize         st_set_precision      st_shift_longitude   
+#&gt; [55] st_simplify           st_snap               st_sym_difference    
+#&gt; [58] st_transform          st_triangulate        st_union             
+#&gt; [61] st_voronoi            st_wrap_dateline      st_write             
+#&gt; [64] st_z_range            st_zm                 str                  
+#&gt; [67] summary               type_sum              vec_cast.sfc         
+#&gt; [70] vec_ptype2.sfc       
+#&gt; see '?methods' for accessing help and source code
+```
+
+---
+
+## Reading and writing spatial data
+
+- `st_read()` / `st_write()`, Shapefile, GeoJSON, KML, ...
+
+- `st_as_sfc()` 
+
+- `st_as_text()`,  well-known text format
+
+- `st_as_binary()`, well-known binary format
+
+&lt;br/&gt;&lt;br/&gt;&lt;br&gt;
+
+See https://r-spatial.github.io/sf/articles/sf2.html for the full
+set of driver availability.
+
+---
+
+## Plotting with `plot()`
+
+
+```r
+plot(nc)
+```
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-21-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+```r
+plot(nc["NAME"])
+```
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-22-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+```r
+par(oma=c(0,2,0,0))
+plot(nc["AREA"], graticule = TRUE, axes = TRUE, las = 1)
+```
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-23-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+## What is happening with `[` and the `sf` object?
+
+
+```r
+nc["AREA"]
+```
+
+```
+#&gt; Simple feature collection with 100 features and 1 field
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: -84.32385 ymin: 33.88199 xmax: -75.45698 ymax: 36.58965
+#&gt; geographic CRS: NAD27
+#&gt; First 10 features:
+#&gt;     AREA                       geometry
+#&gt; 1  0.114 MULTIPOLYGON (((-81.47276 3...
+#&gt; 2  0.061 MULTIPOLYGON (((-81.23989 3...
+#&gt; 3  0.143 MULTIPOLYGON (((-80.45634 3...
+#&gt; 4  0.070 MULTIPOLYGON (((-76.00897 3...
+#&gt; 5  0.153 MULTIPOLYGON (((-77.21767 3...
+#&gt; 6  0.097 MULTIPOLYGON (((-76.74506 3...
+#&gt; 7  0.062 MULTIPOLYGON (((-76.00897 3...
+#&gt; 8  0.091 MULTIPOLYGON (((-76.56251 3...
+#&gt; 9  0.118 MULTIPOLYGON (((-78.30876 3...
+#&gt; 10 0.124 MULTIPOLYGON (((-80.02567 3...
+```
+
+---
+
+
+```r
+nc$AREA
+```
+
+```
+#&gt;   [1] 0.114 0.061 0.143 0.070 0.153 0.097 0.062 0.091 0.118 0.124 0.114 0.153
+#&gt;  [13] 0.143 0.109 0.072 0.190 0.053 0.199 0.081 0.063 0.044 0.064 0.086 0.128
+#&gt;  [25] 0.108 0.170 0.111 0.180 0.104 0.077 0.142 0.059 0.131 0.122 0.080 0.118
+#&gt;  [37] 0.219 0.118 0.155 0.069 0.066 0.145 0.134 0.100 0.099 0.116 0.201 0.180
+#&gt;  [49] 0.094 0.134 0.168 0.106 0.168 0.207 0.144 0.094 0.203 0.141 0.070 0.065
+#&gt;  [61] 0.146 0.142 0.154 0.118 0.078 0.125 0.181 0.143 0.091 0.130 0.103 0.095
+#&gt;  [73] 0.078 0.104 0.098 0.091 0.060 0.131 0.241 0.082 0.120 0.172 0.121 0.163
+#&gt;  [85] 0.138 0.098 0.167 0.204 0.121 0.051 0.177 0.080 0.195 0.240 0.125 0.225
+#&gt;  [97] 0.214 0.240 0.042 0.212
+```
+
+---
+
+
+```r
+par(oma=c(0,2,0,0))
+plot(nc["AREA"], col = "lightblue", graticule = TRUE, 
+     axes = TRUE, las = 1)
+```
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-26-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+```r
+par(oma=c(0,2,0,0))
+plot(st_geometry(nc), graticule = TRUE, axes = TRUE, las = 1)
+```
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-27-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Plotting with `ggplot()`
+
+
+```r
+ggplot(nc) +
+  geom_sf() +
+  theme_bw(base_size = 16)
+```
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-28-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+```r
+ggplot(nc) +
+  geom_sf(aes(fill = AREA)) +
+  scale_fill_gradient(low = "#fee8c8", high = "#7f0000") +
+  theme_bw(base_size = 16)
+```
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-29-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+class: center, middle
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-30-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+
+```r
+p1 &lt;- ggplot(nc) +
+  geom_sf(aes(fill = SID74)) +
+  scale_fill_gradient(low = "#fff7f3", high = "#49006a") +
+  theme_bw(base_size = 16)
+  
+p2 &lt;- ggplot(nc) +
+  geom_sf(aes(fill = SID79)) +
+  scale_fill_gradient(low = "#fff7f3", high = "#49006a") +
+  theme_bw(base_size = 16)
+
+p1 / p2
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+--
+
+Visually, what is wrong with the last plot?
+
+---
+
+## Plotting with `mapview()`
+
+
+```r
+mapview(nc)
+```
+
+--
+
+
+```r
+mapviewOptions(legend.pos = "bottomright")
+mapview(nc["SID74"], col.regions = sf.colors(10), 
+        layer.name = "SID 1974")
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+*These should run in RStudio. There is an issue embedding this overlay in the slides*.
+
+---
+
+## Exercise
+
+Use `ggplot` to create a choropleth map for the proportion of sudden infant 
+deaths, for the period of July 1, 1974 to June 30, 1979.
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-34-1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+???
+
+
+```r
+nc %&gt;% 
+  select(BIR74, SID74) %&gt;% 
+  mutate(SID74_prop = SID74 / (BIR74 + SID74)) %&gt;% 
+  st_as_sf() %&gt;% 
+  ggplot() +
+  geom_sf(aes(fill = SID74_prop)) +
+  scale_fill_gradient(low = "#fff7f3", high = "#49006a") +
+  labs(title = "July 1, 1974 to June 30, 1979", 
+       fill  = "",
+       subtitle = "Proportion of SID by county") +
+  theme_bw(base_size = 16)
+```
+
+---
+
+class: inverse, center, middle
+
+# Map layers
+
+---
+
+## Game Lands data
+
+The North Carolina Department of Environment and Natural Resources, 
+Wildlife Resources Commission and the NC Center for Geographic Information and 
+Analysis has a shapefile data set available on all public Game Lands in NC.
+
+https://www.nconemap.gov/datasets/e5ddff9b96204c6181be7c022e61d946_0
+
+We can directly download and unzip the shapefile via
+
+
+```r
+download.file("https://opendata.arcgis.com/datasets/e5ddff9b96204c6181be7c022e61d946_0.zip?outSR=%7B%22latestWkid%22%3A32119%2C%22wkid%22%3A32119%7D",
+              destfile = "data/Gamelands.zip")
+unzip("data/Gamelands.zip", exdir = "data/")
+```
+
+--
+
+To see the available files
+
+
+```r
+list.files(path = "data/", pattern = "Game_Lands*")
+```
+
+```
+#&gt; [1] "Game_Lands_-_general.cpg" "Game_Lands_-_general.dbf"
+#&gt; [3] "Game_Lands_-_general.prj" "Game_Lands_-_general.shp"
+#&gt; [5] "Game_Lands_-_general.shx" "Game_Lands_-_general.xml"
+```
+
+---
+
+## Read in the shapefile
+
+
+```r
+nc_gamelands &lt;- st_read("data/Game_Lands_-_general.shp", quiet = TRUE)
+```
+
+.tiny[
+
+```r
+print(nc_gamelands, n = 5)
+```
+
+```
+#&gt; Simple feature collection with 94 features and 6 fields
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: 127456.7 ymin: 26544.91 xmax: 923528.7 ymax: 318097.4
+#&gt; projected CRS:  NAD83 / North Carolina
+#&gt; First 5 features:
+#&gt;   OBJECTID         GML_HAB SUM_ACRES GameLandID Shape__Are Shape__Len
+#&gt; 1        1           Alcoa 11109.559          1   44958790  438301.56
+#&gt; 2        2 Alligator River 24439.089          2   98901485  151120.16
+#&gt; 3        3      Angola Bay 34067.382          3  137865804   87094.49
+#&gt; 4        4    Bachelor Bay  2786.258          4   11275585   26613.27
+#&gt; 5        5   Bertie County  3881.466          5   15707735   67343.97
+#&gt;                         geometry
+#&gt; 1 MULTIPOLYGON (((512096.2 18...
+#&gt; 2 MULTIPOLYGON (((869633.1 24...
+#&gt; 3 MULTIPOLYGON (((713079.4 11...
+#&gt; 4 MULTIPOLYGON (((813742.2 23...
+#&gt; 5 MULTIPOLYGON (((797133.8 24...
+```
+]
+
+---
+
+## Metadata for each `sf` object
+
+`nc`:
+
+
+```r
+Simple feature collection with 100 features and 14 fields
+geometry type:  MULTIPOLYGON
+dimension:      XY
+bbox:           xmin: -84.32385 ymin: 33.88199 xmax: -75.45698 ymax: 36.58965
+*geographic CRS: NAD27
+```
+
+`nc_gamelands`:
+
+
+```r
+Simple feature collection with 94 features and 6 fields
+geometry type:  MULTIPOLYGON
+dimension:      XY
+bbox:           xmin: 127456.7 ymin: 26544.91 xmax: 923528.7 ymax: 318097.4
+*projected CRS:  NAD83 / North Carolina
+```
+
+---
+
+## Check the CRS
+
+
+```r
+st_crs(nc)
+```
+
+
+```r
+Coordinate Reference System:
+  User input: NAD27 
+  wkt:
+GEOGCRS["NAD27",
+    DATUM["North American Datum 1927",
+        ELLIPSOID["Clarke 1866",6378206.4,294.978698213898,
+            LENGTHUNIT["metre",1]]],
+    PRIMEM["Greenwich",0,
+        ANGLEUNIT["degree",0.0174532925199433]],
+    CS[ellipsoidal,2],
+        AXIS["latitude",north,
+            ORDER[1],
+            ANGLEUNIT["degree",0.0174532925199433]],
+        AXIS["longitude",east,
+            ORDER[2],
+            ANGLEUNIT["degree",0.0174532925199433]],
+    ID["EPSG",4267]]
+```
+
+
+---
+
+.tiny[
+
+```r
+st_crs(nc_gamelands)
+```
+
+
+```r
+Coordinate Reference System:
+  User input: NAD83 / North Carolina 
+  wkt:
+PROJCRS["NAD83 / North Carolina",
+    BASEGEOGCRS["NAD83",
+        DATUM["North American Datum 1983",
+            ELLIPSOID["GRS 1980",6378137,298.257222101,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",4269]],
+    CONVERSION["SPCS83 North Carolina zone (meters)",
+        METHOD["Lambert Conic Conformal (2SP)",
+            ID["EPSG",9802]],
+        PARAMETER["Latitude of false origin",33.75,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8821]],
+                
+                  ⋮    
+          
+        PARAMETER["Northing at false origin",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8827]]],
+    CS[Cartesian,2],
+        AXIS["easting (X)",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["northing (Y)",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["unknown"],
+        AREA["USA - North Carolina"],
+        BBOX[33.83,-84.33,36.59,-75.38]],
+    ID["EPSG",32119]]
+```
+]
+
+---
+
+## Coordinate reference systems (CRS)
+
+- CRS provide a standardized way of describing locations.
+
+- Different CRS arise from various ways data were gathered, the locations,
+  and purposes of the data.
+  
+- A CRS is comprised of
+    - an ellipsoid, to define the earth's shape;
+    - a datum, to define the origin and orientation of coordinate axes;
+    - a projection, to go from 3D to 2D.
+
+- It is important that you transform your spatial data to a common CRS before
+  plotting.
+
+---
+
+## Transform CRS
+
+
+```r
+nc_gamelands &lt;- st_transform(nc_gamelands, crs = st_crs(nc))
+```
+
+--
+
+Check they are equal:
+
+
+```r
+st_crs(nc) == st_crs(nc_gamelands)
+```
+
+```
+#&gt; [1] TRUE
+```
+
+---
+
+## Map overlay with `plot()`
+
+
+```r
+plot(st_geometry(nc), axes = T, las = 1, main = "NC Public Game Lands",
+     cex.main = 3, cex.lab = 2, cex.axis = 1.5)
+
+plot(st_geometry(nc_gamelands), 
+*    add = T,
+     col = "#ff6700")
+
+legend("bottomleft", legend = "WRC Game Lands", fill = "#ff6700")
+```
+
+---
+
+## Map overlay with `plot()`
+
+&lt;img src="lec_11_files/figure-html/unnamed-chunk-49-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+## Map overlay with `mapview()`
+
+
+```r
+nc_mapview &lt;- mapview(nc, alpha.regions = .2, alpha = .9,
+                  label = nc[, "NAME", drop = T],
+                  layer.name = "NC Counties")
+```
+
+
+```r
+nc_gamelands_mapview &lt;- mapview(nc_gamelands, col.regions = "#ff6700",
+        label = round(nc_gamelands[, "SUM_ACRES", drop = T], 2),
+        layer.name = "NC Gamelands")
+```
+
+
+```r
+nc_mapview + nc_gamelands_mapview
+```
+
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+
+*These should run in RStudio. There is an issue embedding this overlay in the slides*.
+
+---
+
+## Exercise
+
+Create a map that includes NC county boundaries, Game Lands, and hazardous waste
+sites. Data for the hazardous waste sites is available at
+https://www.nconemap.gov/datasets/hazardous-waste-sites
+
+This data set represents the location of sites within North Carolina that 
+are regulated by the hazardous waste portions of the 
+Resource Conservation and Recovery Act (RCRA).
+
+---
+
+class: inverse, center, middle
+
+# Next time: Manipulating `sf` type objects
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -24,8 +24,7 @@ class: center, middle, inverse, title-slide
 
 ## Supplementary materials
 
-Companion videos
-
+Full video lecture available in Zoom Cloud Recordings
 
 Additional resources
 
@@ -243,8 +242,8 @@ View in Viewer pane.
 str_view_all(twister, ".y.")
 ```
 
-<div id="htmlwidget-880581a450c85368c744" style="width:960px;height:100%;" class="str_view html-widget"></div>
-<script type="application/json" data-for="htmlwidget-880581a450c85368c744">{"x":{"html":"<ul>\n  <li>thir<span class='match'>ty-<\/span>three thieves thought th<span class='match'>ey <\/span>thrilled the throne Thursday<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-67bd2798ace63c1417e2" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-67bd2798ace63c1417e2">{"x":{"html":"<ul>\n  <li>thir<span class='match'>ty-<\/span>three thieves thought th<span class='match'>ey <\/span>thrilled the throne Thursday<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
 
 ---
 
@@ -453,8 +452,8 @@ We need to escape the backslash in our regex of `\`.
 str_view_all("show.me.the.dots...", "\\.")
 ```
 
-<div id="htmlwidget-cff878fa09d3396a06e8" style="width:960px;height:100%;" class="str_view html-widget"></div>
-<script type="application/json" data-for="htmlwidget-cff878fa09d3396a06e8">{"x":{"html":"<ul>\n  <li>show<span class='match'>.<\/span>me<span class='match'>.<\/span>the<span class='match'>.<\/span>dots<span class='match'>.<\/span><span class='match'>.<\/span><span class='match'>.<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-bd128268a2115e60fc1f" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-bd128268a2115e60fc1f">{"x":{"html":"<ul>\n  <li>show<span class='match'>.<\/span>me<span class='match'>.<\/span>the<span class='match'>.<\/span>dots<span class='match'>.<\/span><span class='match'>.<\/span><span class='match'>.<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
 
 ---
 
@@ -484,8 +483,8 @@ What do you need to match a literal `\` in regex pattern matching?
 str_view_all("find the \\ in this string", "\\\\")
 ```
 
-<div id="htmlwidget-0f1bab4531c78d6e4eff" style="width:960px;height:100%;" class="str_view html-widget"></div>
-<script type="application/json" data-for="htmlwidget-0f1bab4531c78d6e4eff">{"x":{"html":"<ul>\n  <li>find the <span class='match'>\\<\/span> in this string<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-1667a773014b54df86b9" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1667a773014b54df86b9">{"x":{"html":"<ul>\n  <li>find the <span class='match'>\\<\/span> in this string<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
 
 ---
 
@@ -619,22 +618,22 @@ y &lt;- "Vehicle info: AEF 2348"
 str_view_all(x, "[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]")
 ```
 
-<div id="htmlwidget-f6f6dba211c32c2ffeb7" style="width:960px;height:100%;" class="str_view html-widget"></div>
-<script type="application/json" data-for="htmlwidget-f6f6dba211c32c2ffeb7">{"x":{"html":"<ul>\n  <li>My info is as follows. Cell: (432)-431-1512. Social security: <span class='match'>432-11-1990<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-83168efebffcacc9521c" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-83168efebffcacc9521c">{"x":{"html":"<ul>\n  <li>My info is as follows. Cell: (432)-431-1512. Social security: <span class='match'>432-11-1990<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
 
 ```r
 str_view_all(x, "\\([0-9][0-9][0-9]\\)-[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
 ```
 
-<div id="htmlwidget-536ff7942129d31f55fb" style="width:960px;height:100%;" class="str_view html-widget"></div>
-<script type="application/json" data-for="htmlwidget-536ff7942129d31f55fb">{"x":{"html":"<ul>\n  <li>My info is as follows. Cell: <span class='match'>(432)-431-1512<\/span>. Social security: 432-11-1990<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-da2f7f06b9597690941d" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-da2f7f06b9597690941d">{"x":{"html":"<ul>\n  <li>My info is as follows. Cell: <span class='match'>(432)-431-1512<\/span>. Social security: 432-11-1990<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
 
 ```r
 str_view_all(y, "[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9]")
 ```
 
-<div id="htmlwidget-e498e3ba149c70e398b7" style="width:960px;height:100%;" class="str_view html-widget"></div>
-<script type="application/json" data-for="htmlwidget-e498e3ba149c70e398b7">{"x":{"html":"<ul>\n  <li>Vehicle info: <span class='match'>AEF 2348<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-f2e0aad48a15f9f2d949" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f2e0aad48a15f9f2d949">{"x":{"html":"<ul>\n  <li>Vehicle info: <span class='match'>AEF 2348<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
 
 ---
 

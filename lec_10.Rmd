@@ -24,8 +24,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
 
 ## Supplementary materials
 
-Companion videos
-
+Full video lecture available in Zoom Cloud Recordings
 
 Additional resources
 
