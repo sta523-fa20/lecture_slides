@@ -1,0 +1,627 @@
+---
+title: "Web scraping part I"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [SelectorGadget Vignette](https://cran.r-project.org/web/packages/rvest/vignettes/selectorgadget.html)
+- `rvest` [website](https://rvest.tidyverse.org/)
+
+---
+
+class: inverse, center, middle
+
+# Recap
+
+---
+
+## Summary of packages
+
+.small-text[
+| Task                | Package     | Cheat sheet                                                                  |
+|---------------------|-------------|------------------------------------------------------------------------------|
+| Visualize data      | `ggplot2`   | https://github.com/rstudio/cheatsheets/raw/master/data-visualization-2.1.pdf |
+| Wrangle data frames | `dplyr`     | https://github.com/rstudio/cheatsheets/raw/master/data-transformation.pdf    |
+| Reshape data frames | `tidyr`     | https://github.com/rstudio/cheatsheets/raw/master/data-import.pdf            |
+| Iterate             | `purrr`     | https://github.com/rstudio/cheatsheets/raw/master/purrr.pdf                  |
+| Text manipulation   | `stringr`   | https://github.com/rstudio/cheatsheets/raw/master/strings.pdf                |
+| Manipulate factors  | `forcats`   | https://github.com/rstudio/cheatsheets/raw/master/factors.pdf                |
+| Manipulate dates    | `lubridate` | https://github.com/rstudio/cheatsheets/raw/master/lubridate.pdf              |
+| Spatial data        | `sf`        | https://github.com/rstudio/cheatsheets/raw/master/sf.pdf                     |
+]
+
+<br/>
+
+<i>
+You don't need to memorize every function in these packages. Just know
+where you need to look when you come across a specific problem.
+</i>
+
+---
+
+class: inverse, center, middle
+
+# HTML
+
+---
+
+## Hypertext Markup Language
+
+- HTML describes the structure of a web page; your browser interprets the 
+  structure and contents and displays the results.
+  
+- The basic building blocks include elements, tags, and attributes.
+    - an element is a component of an HTML document
+    - elements contain tags (start and end tag)
+    - attributes provide additional information about HTML elements
+
+<center>
+<img src="images/html_structure.png" height="300" width="450">
+</center>
+
+---
+
+## Simple HTML document
+
+```html
+<html>
+<head>
+<title>Web Scraping</title>
+</head>
+<body>
+
+<h1>Using rvest</h1>
+<p>To get started...</p>
+
+</body>
+</html>
+```
+
+<br/><br/>
+
+We can visualize this in a tree-like structure.
+
+---
+
+## HTML tree-like structure
+
+<center>
+<img src="images/html_tree.png" height="450" width="550">
+</center>
+
+If we have access to an HTML document, then how can we easily 
+extract information?
+
+---
+
+class: inverse, center, middle
+
+# Package `rvest`
+
+---
+
+## Package `rvest`
+
+`rvest` is a package authored by Hadley Wickham that makes basic processing and 
+manipulation of HTML data easy.
+
+```{r}
+library(rvest)
+```
+
+Core functions:
+
+| Function            | Description                                                       |
+|---------------------|-------------------------------------------------------------------|
+| `xml2::read_html()` | read HTML from a character string or connection                   |
+| `html_nodes()`      | select specified nodes from the HTML document using CSS selectors |
+| `html_table()`      | parse an HTML table into a data frame                             |
+| `html_text()`       | extract tag pairs' content                                        |
+| `html_name()`       | extract tags' names                                               |
+| `html_attrs()`      | extract all of each tag's attributes                              |
+| `html_attr()`       | extract tags' attribute value by name                             |
+
+---
+
+## HTML in R
+
+
+```{r}
+simple_html <- "<html>
+  <head>
+    <title>Web Scraping</title>
+  </head>
+  <body>
+  
+    <h1>Using rvest</h1>
+    <p>To get started...</p>
+  
+  </body>
+</html>"
+```
+
+--
+
+```{r}
+simple_html
+```
+
+---
+
+```{r}
+html_doc <- read_html(simple_html)
+attributes(html_doc)
+```
+
+--
+
+<br/>
+
+```{r}
+html_doc
+```
+
+---
+
+## CSS selectors
+
+To extract components out of HTML documents use `html_nodes()` and CSS selectors.
+In CSS, selectors are patterns used to select elements you want to style.
+
+- CSS stands for Cascading Style Sheets.
+ 
+- CSS describes how HTML elements are to be displayed on screen, paper, or 
+  in other media.
+ 
+- CSS can be added to HTML elements in 3 ways:
+    - Inline - by using the style attribute in HTML elements
+    - Internal - by using a style element in the head section
+    - External - by using an external CSS file
+
+---
+
+## More on CSS
+
+.small-text[
+
+Selector          |  Example         | Description
+:-----------------|:-----------------|:--------------------------------------------------
+element           |  `p`             | Select all &lt;p&gt; elements
+element element   |  `div p`         | Select all &lt;p&gt; elements inside a &lt;div&gt; element
+element>element   |  `div > p`       | Select all &lt;p&gt; elements with &lt;div&gt; as a parent
+.class            |  `.title`        | Select all elements with class="title"
+#id               |  `#name`         | Select all elements with id="name"
+[attribute]       |  `[class]`       | Select all elements with a class attribute
+[attribute=value] |  `[class=title]` | Select all elements with class="title"
+
+]
+
+For more CSS selector references click [here](https://www.w3schools.com/cssref/css_selectors.asp).
+
+--
+
+<br/>
+
+Fortunately, we can determine the necessary CSS selectors we need via the 
+point-and-click tool [selector gadget](https://selectorgadget.com/). 
+More on this in a moment.
+
+---
+
+## Example
+
+URL: https://raysnotebook.info/ows/schedules/The%20Whole%20Shebang.html
+
+.tiny[
+```html
+<html lang=en>
+<head>
+   <title>Rays Notebook: Open Water Swims 2020 — The Whole Shebang</title>
+</head>
+<body>
+<main class=schedule>
+<h1>The Whole Shebang</h1>
+
+<p>This schedule lists every swim in the database. 383 events.</p>
+
+<table class=schedule>
+<thead><tr><th>Date</th><th>Location</th><th>Name</th><th>Distance</th><th>More</th></tr></thead>
+<tbody>
+
+<tr id=January>
+<td class=date>Jan 12, Sun</td>
+<td class=where>
+   <a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997">Petersburg, FL</a>
+   <span class=more>
+   Gandy Beach, Gandy Blvd N St, Petersburg, FL
+   </span>
+</td>
+<td class=name><a href="http://tampabayfrogman.com/">Tampa Bay Frogman</a></td>
+<td class=distance>5 km</td>
+<td class=more><span class=time>7:15 AM</span>, Old Tampa Bay.</td>
+</tr>
+</body>
+</html>
+```
+]
+
+```{r echo=FALSE}
+html_swim <- '<html lang=en>
+<head>
+   <title>Rays Notebook: Open Water Swims 2020 — The Whole Shebang</title>
+</head>
+<body>
+<main class=schedule>
+<h1>The Whole Shebang</h1>
+
+<p>This schedule lists every swim in the database. 383 events.</p>
+
+<table class=schedule>
+<thead><tr><th>Date</th><th>Location</th><th>Name</th><th>Distance</th><th>More</th></tr></thead>
+<tbody>
+
+<tr id=January>
+<td class=date>Jan 12, Sun</td>
+<td class=where>
+   <a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997">Petersburg, FL</a>
+   <span class=more>
+   Gandy Beach, Gandy Blvd N St, Petersburg, FL
+   </span>
+</td>
+<td class=name><a href="http://tampabayfrogman.com/">Tampa Bay Frogman</a></td>
+<td class=distance>5 km</td>
+<td class=more><span class=time>7:15 AM</span>, Old Tampa Bay.</td>
+</tr>
+</body>
+</html>'
+```
+
+---
+
+Suppose we want to extract and parse the information highlighted below in
+yellow.
+
+.tiny[
+```{r eval=FALSE}
+<html lang=en>
+<head>
+   <title>Rays Notebook: Open Water Swims 2020 — The Whole Shebang</title>
+</head>
+<body>
+<main class=schedule>
+<h1>The Whole Shebang</h1>
+
+<p>This schedule lists every swim in the database. 383 events.</p> #<<
+
+<table class=schedule>
+<thead><tr><th>Date</th><th>Location</th><th>Name</th><th>Distance</th><th>More</th></tr></thead>
+<tbody>
+
+<tr id=January>
+<td class=date>Jan 12, Sun</td>
+<td class=where>
+   <a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997">Petersburg, FL</a>
+   <span class=more>
+   Gandy Beach, Gandy Blvd N St, Petersburg, FL
+   </span>
+</td>
+<td class=name><a href="http://tampabayfrogman.com/">Tampa Bay Frogman</a></td>
+<td class=distance>5 km</td>
+<td class=more><span class=time>7:15 AM</span>, Old Tampa Bay.</td>
+</tr>
+</body>
+</html>
+```
+]
+
+---
+
+**Step 1**
+
+Save the HTML as a character object named `html_swim`.
+
+```{r eval=FALSE}
+html_swim <- "<html lang=en> ... </body></html>"
+```
+
+--
+
+**Step 2**
+
+To extract all `<p>` elements:
+
+```{r}
+html_swim %>% 
+  read_html() %>% 
+  html_nodes(css = "p") #<<
+```
+
+--
+
+**Step 3**
+
+To extract the contents between the tags:
+
+```{r}
+html_swim %>% 
+  read_html() %>% 
+  html_nodes(css = "p") %>% 
+  html_text() #<<
+```
+
+---
+
+Suppose we want to extract and parse pieces of the information highlighted 
+below in yellow.
+
+.tiny[
+```{r eval=FALSE}
+<html lang=en>
+<head>
+   <title>Rays Notebook: Open Water Swims 2020 — The Whole Shebang</title>
+</head>
+<body>
+<main class=schedule>
+<h1>The Whole Shebang</h1>
+
+<p>This schedule lists every swim in the database. 383 events.</p>
+
+<table class=schedule>
+<thead><tr><th>Date</th><th>Location</th><th>Name</th><th>Distance</th><th>More</th></tr></thead>
+<tbody>
+
+<tr id=January>
+<td class=date>Jan 12, Sun</td>
+<td class=where> #<<
+   <a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997">Petersburg, FL</a> #<<
+   <span class=more> #<<
+   Gandy Beach, Gandy Blvd N St, Petersburg, FL #<<
+   </span> #<<
+</td> #<<
+<td class=name><a href="http://tampabayfrogman.com/">Tampa Bay Frogman</a></td>
+<td class=distance>5 km</td>
+<td class=more><span class=time>7:15 AM</span>, Old Tampa Bay.</td>
+</tr>
+</body>
+</html>
+```
+]
+
+---
+
+To select all elements with `class="where"`:
+
+```{r}
+html_swim %>% 
+  read_html() %>% 
+  html_nodes(css = "[class=where]") #<<
+```
+
+--
+
+To extract the text:
+
+```{r}
+html_swim %>% 
+  read_html() %>% 
+  html_nodes(css = "[class=where]") %>% 
+  html_text() #<<
+```
+
+--
+
+To extract the attributes:
+
+```{r}
+html_swim %>% 
+  read_html() %>% 
+  html_nodes(css = "[class=where]") %>% 
+  html_attrs() #<<
+```
+
+---
+
+Suppose we want to extract and parse the information highlighted below in
+yellow.
+
+.tiny[
+```{r eval=FALSE}
+<html lang=en>
+<head>
+   <title>Rays Notebook: Open Water Swims 2020 — The Whole Shebang</title>
+</head>
+<body>
+<main class=schedule>
+<h1>The Whole Shebang</h1>
+
+<p>This schedule lists every swim in the database. 383 events.</p>
+
+<table class=schedule>
+<thead><tr><th>Date</th><th>Location</th><th>Name</th><th>Distance</th><th>More</th></tr></thead>
+<tbody>
+
+<tr id=January>
+<td class=date>Jan 12, Sun</td>
+<td class=where>
+   <a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997">Petersburg, FL</a> #<<
+   <span class=more>
+   Gandy Beach, Gandy Blvd N St, Petersburg, FL
+   </span>
+</td>
+<td class=name><a href="http://tampabayfrogman.com/">Tampa Bay Frogman</a></td> #<<
+<td class=distance>5 km</td>
+<td class=more><span class=time>7:15 AM</span>, Old Tampa Bay.</td>
+</tr>
+</body>
+</html>
+```
+]
+
+---
+
+To extract the links (those with an `href` attribute):
+
+```{r}
+html_swim %>% 
+  read_html() %>% 
+  html_nodes(css = "[href]") #<<
+```
+
+--
+
+To get only the URLs (value of the `href` attribute):
+
+```{r}
+html_swim %>% 
+  read_html() %>% 
+  html_nodes(css = "[href]") %>% 
+  html_attr("href") #<<
+```
+
+
+---
+
+## SelectorGadget
+
+[SelectorGadget](https://selectorgadget.com/) makes identifying the CSS 
+selector you need by easily clicking on items on a webpage.
+
+<center>
+<iframe title="vimeo-player" src="https://player.vimeo.com/video/52055686" width="800" height="400" frameborder="0" allowfullscreen></iframe>
+</center>
+
+---
+
+class: inverse, center, middle
+
+# Live demo
+
+---
+
+## Exercise
+
+Go to http://books.toscrape.com/catalogue/page-1.html and scrape the first 
+five pages of data on books with regards to their
+
+1. title
+2. price
+3. star rating
+
+Organize your results in a neatly formatted tibble similar to below.
+
+```{r eval=FALSE}
+# A tibble: 100 x 3
+   title                                             price rating
+   <chr>                                             <chr> <chr> 
+ 1 A Light in the Attic                              £51.… Three 
+ 2 Tipping the Velvet                                £53.… One   
+ 3 Soumission                                        £50.… One   
+ 4 Sharp Objects                                     £47.… Four  
+ 5 Sapiens: A Brief History of Humankind             £54.… Five  
+ 6 The Requiem Red                                   £22.… One   
+ 7 The Dirty Little Secrets of Getting Your Dream J… £33.… Four  
+ 8 The Coming Woman: A Novel Based on the Life of t… £17.… Three 
+ 9 The Boys in the Boat: Nine Americans and Their E… £22.… Four  
+10 The Black Maria                                   £52.… One   
+# … with 90 more rows
+```
+
+???
+
+## Solution
+
+
+```{r eval=FALSE}
+
+# example for page 1, see how everything works
+url <- "http://books.toscrape.com/catalogue/page-1.html"
+
+read_html(url) %>% 
+  html_nodes(css = ".price_color") %>% 
+  html_text()
+
+read_html(url) %>% 
+  html_nodes(css = ".product_pod a") %>% 
+  html_attr("title") %>% 
+  .[!is.na(.)]
+
+read_html(url) %>% 
+  html_nodes(css = ".star-rating") %>% 
+  html_attr(name = "class") %>% 
+  str_remove(pattern = "star-rating ")
+
+
+# turn our code into a function
+get_books <- function(page) {
+  
+  base_url <- "http://books.toscrape.com/catalogue/page-"
+  url <- str_c(base_url, page, ".html")
+  
+  books_html <- read_html(url)
+  
+  prices <- books_html %>% 
+    html_nodes(css = ".price_color") %>% 
+    html_text()
+  
+  titles <- books_html %>% 
+    html_nodes(css = ".product_pod a") %>% 
+    html_attr("title") %>% 
+    .[!is.na(.)]
+
+  ratings <- books_html %>% 
+    html_nodes(css = ".star-rating") %>% 
+    html_attr(name = "class") %>% 
+    str_remove(pattern = "star-rating ")
+  
+  books_df <- tibble(
+    title  = titles,
+    price  = prices,
+    rating = ratings
+  )
+  
+  return(books_df)
+}
+
+# iterate across pages
+
+pages <- 1:5
+books <- map_df(pages, get_books)
+```
+
+---
+
+## References
+
+1. Easily Harvest (Scrape) Web Pages. (2020). Rvest.tidyverse.org. 
+   https://rvest.tidyverse.org/.
+
+2. W3Schools Online Web Tutorials. (2020). W3schools.com. 
+   https://www.w3schools.com/.
+
+3. SelectorGadget: point and click CSS selectors. (2020). Selectorgadget.com. 
+   https://selectorgadget.com/.
+

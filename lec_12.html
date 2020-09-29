@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Web scraping part I</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Web scraping part I
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [SelectorGadget Vignette](https://cran.r-project.org/web/packages/rvest/vignettes/selectorgadget.html)
+- `rvest` [website](https://rvest.tidyverse.org/)
+
+---
+
+class: inverse, center, middle
+
+# Recap
+
+---
+
+## Summary of packages
+
+.small-text[
+| Task                | Package     | Cheat sheet                                                                  |
+|---------------------|-------------|------------------------------------------------------------------------------|
+| Visualize data      | `ggplot2`   | https://github.com/rstudio/cheatsheets/raw/master/data-visualization-2.1.pdf |
+| Wrangle data frames | `dplyr`     | https://github.com/rstudio/cheatsheets/raw/master/data-transformation.pdf    |
+| Reshape data frames | `tidyr`     | https://github.com/rstudio/cheatsheets/raw/master/data-import.pdf            |
+| Iterate             | `purrr`     | https://github.com/rstudio/cheatsheets/raw/master/purrr.pdf                  |
+| Text manipulation   | `stringr`   | https://github.com/rstudio/cheatsheets/raw/master/strings.pdf                |
+| Manipulate factors  | `forcats`   | https://github.com/rstudio/cheatsheets/raw/master/factors.pdf                |
+| Manipulate dates    | `lubridate` | https://github.com/rstudio/cheatsheets/raw/master/lubridate.pdf              |
+| Spatial data        | `sf`        | https://github.com/rstudio/cheatsheets/raw/master/sf.pdf                     |
+]
+
+&lt;br/&gt;
+
+&lt;i&gt;
+You don't need to memorize every function in these packages. Just know
+where you need to look when you come across a specific problem.
+&lt;/i&gt;
+
+---
+
+class: inverse, center, middle
+
+# HTML
+
+---
+
+## Hypertext Markup Language
+
+- HTML describes the structure of a web page; your browser interprets the 
+  structure and contents and displays the results.
+  
+- The basic building blocks include elements, tags, and attributes.
+    - an element is a component of an HTML document
+    - elements contain tags (start and end tag)
+    - attributes provide additional information about HTML elements
+
+&lt;center&gt;
+&lt;img src="images/html_structure.png" height="300" width="450"&gt;
+&lt;/center&gt;
+
+---
+
+## Simple HTML document
+
+```html
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;Web Scraping&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+&lt;h1&gt;Using rvest&lt;/h1&gt;
+&lt;p&gt;To get started...&lt;/p&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+We can visualize this in a tree-like structure.
+
+---
+
+## HTML tree-like structure
+
+&lt;center&gt;
+&lt;img src="images/html_tree.png" height="450" width="550"&gt;
+&lt;/center&gt;
+
+If we have access to an HTML document, then how can we easily 
+extract information?
+
+---
+
+class: inverse, center, middle
+
+# Package `rvest`
+
+---
+
+## Package `rvest`
+
+`rvest` is a package authored by Hadley Wickham that makes basic processing and 
+manipulation of HTML data easy.
+
+
+```r
+library(rvest)
+```
+
+Core functions:
+
+| Function            | Description                                                       |
+|---------------------|-------------------------------------------------------------------|
+| `xml2::read_html()` | read HTML from a character string or connection                   |
+| `html_nodes()`      | select specified nodes from the HTML document using CSS selectors |
+| `html_table()`      | parse an HTML table into a data frame                             |
+| `html_text()`       | extract tag pairs' content                                        |
+| `html_name()`       | extract tags' names                                               |
+| `html_attrs()`      | extract all of each tag's attributes                              |
+| `html_attr()`       | extract tags' attribute value by name                             |
+
+---
+
+## HTML in R
+
+
+
+```r
+simple_html &lt;- "&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;Web Scraping&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+  
+    &lt;h1&gt;Using rvest&lt;/h1&gt;
+    &lt;p&gt;To get started...&lt;/p&gt;
+  
+  &lt;/body&gt;
+&lt;/html&gt;"
+```
+
+--
+
+
+```r
+simple_html
+```
+
+```
+#&gt; [1] "&lt;html&gt;\n  &lt;head&gt;\n    &lt;title&gt;Web Scraping&lt;/title&gt;\n  &lt;/head&gt;\n  &lt;body&gt;\n  \n    &lt;h1&gt;Using rvest&lt;/h1&gt;\n    &lt;p&gt;To get started...&lt;/p&gt;\n  \n  &lt;/body&gt;\n&lt;/html&gt;"
+```
+
+---
+
+
+```r
+html_doc &lt;- read_html(simple_html)
+attributes(html_doc)
+```
+
+```
+#&gt; $names
+#&gt; [1] "node" "doc" 
+#&gt; 
+#&gt; $class
+#&gt; [1] "xml_document" "xml_node"
+```
+
+--
+
+&lt;br/&gt;
+
+
+```r
+html_doc
+```
+
+```
+#&gt; {html_document}
+#&gt; &lt;html&gt;
+#&gt; [1] &lt;head&gt;\n&lt;meta http-equiv="Content-Type" content="text/html; charset=UTF-8 ...
+#&gt; [2] &lt;body&gt;\n  \n    &lt;h1&gt;Using rvest&lt;/h1&gt;\n    &lt;p&gt;To get started...&lt;/p&gt;\n  \n  ...
+```
+
+---
+
+## CSS selectors
+
+To extract components out of HTML documents use `html_nodes()` and CSS selectors.
+In CSS, selectors are patterns used to select elements you want to style.
+
+- CSS stands for Cascading Style Sheets.
+ 
+- CSS describes how HTML elements are to be displayed on screen, paper, or 
+  in other media.
+ 
+- CSS can be added to HTML elements in 3 ways:
+    - Inline - by using the style attribute in HTML elements
+    - Internal - by using a style element in the head section
+    - External - by using an external CSS file
+
+---
+
+## More on CSS
+
+.small-text[
+
+Selector          |  Example         | Description
+:-----------------|:-----------------|:--------------------------------------------------
+element           |  `p`             | Select all &amp;lt;p&amp;gt; elements
+element element   |  `div p`         | Select all &amp;lt;p&amp;gt; elements inside a &amp;lt;div&amp;gt; element
+element&gt;element   |  `div &gt; p`       | Select all &amp;lt;p&amp;gt; elements with &amp;lt;div&amp;gt; as a parent
+.class            |  `.title`        | Select all elements with class="title"
+#id               |  `#name`         | Select all elements with id="name"
+[attribute]       |  `[class]`       | Select all elements with a class attribute
+[attribute=value] |  `[class=title]` | Select all elements with class="title"
+
+]
+
+For more CSS selector references click [here](https://www.w3schools.com/cssref/css_selectors.asp).
+
+--
+
+&lt;br/&gt;
+
+Fortunately, we can determine the necessary CSS selectors we need via the 
+point-and-click tool [selector gadget](https://selectorgadget.com/). 
+More on this in a moment.
+
+---
+
+## Example
+
+URL: https://raysnotebook.info/ows/schedules/The%20Whole%20Shebang.html
+
+.tiny[
+```html
+&lt;html lang=en&gt;
+&lt;head&gt;
+   &lt;title&gt;Rays Notebook: Open Water Swims 2020 — The Whole Shebang&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;main class=schedule&gt;
+&lt;h1&gt;The Whole Shebang&lt;/h1&gt;
+
+&lt;p&gt;This schedule lists every swim in the database. 383 events.&lt;/p&gt;
+
+&lt;table class=schedule&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Date&lt;/th&gt;&lt;th&gt;Location&lt;/th&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Distance&lt;/th&gt;&lt;th&gt;More&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+
+&lt;tr id=January&gt;
+&lt;td class=date&gt;Jan 12, Sun&lt;/td&gt;
+&lt;td class=where&gt;
+   &lt;a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997"&gt;Petersburg, FL&lt;/a&gt;
+   &lt;span class=more&gt;
+   Gandy Beach, Gandy Blvd N St, Petersburg, FL
+   &lt;/span&gt;
+&lt;/td&gt;
+&lt;td class=name&gt;&lt;a href="http://tampabayfrogman.com/"&gt;Tampa Bay Frogman&lt;/a&gt;&lt;/td&gt;
+&lt;td class=distance&gt;5 km&lt;/td&gt;
+&lt;td class=more&gt;&lt;span class=time&gt;7:15 AM&lt;/span&gt;, Old Tampa Bay.&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+```
+]
+
+
+
+---
+
+Suppose we want to extract and parse the information highlighted below in
+yellow.
+
+.tiny[
+
+```r
+&lt;html lang=en&gt;
+&lt;head&gt;
+   &lt;title&gt;Rays Notebook: Open Water Swims 2020 — The Whole Shebang&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;main class=schedule&gt;
+&lt;h1&gt;The Whole Shebang&lt;/h1&gt;
+
+*&lt;p&gt;This schedule lists every swim in the database. 383 events.&lt;/p&gt;
+
+&lt;table class=schedule&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Date&lt;/th&gt;&lt;th&gt;Location&lt;/th&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Distance&lt;/th&gt;&lt;th&gt;More&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+
+&lt;tr id=January&gt;
+&lt;td class=date&gt;Jan 12, Sun&lt;/td&gt;
+&lt;td class=where&gt;
+   &lt;a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997"&gt;Petersburg, FL&lt;/a&gt;
+   &lt;span class=more&gt;
+   Gandy Beach, Gandy Blvd N St, Petersburg, FL
+   &lt;/span&gt;
+&lt;/td&gt;
+&lt;td class=name&gt;&lt;a href="http://tampabayfrogman.com/"&gt;Tampa Bay Frogman&lt;/a&gt;&lt;/td&gt;
+&lt;td class=distance&gt;5 km&lt;/td&gt;
+&lt;td class=more&gt;&lt;span class=time&gt;7:15 AM&lt;/span&gt;, Old Tampa Bay.&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+```
+]
+
+---
+
+**Step 1**
+
+Save the HTML as a character object named `html_swim`.
+
+
+```r
+html_swim &lt;- "&lt;html lang=en&gt; ... &lt;/body&gt;&lt;/html&gt;"
+```
+
+--
+
+**Step 2**
+
+To extract all `&lt;p&gt;` elements:
+
+
+```r
+html_swim %&gt;% 
+  read_html() %&gt;% 
+* html_nodes(css = "p")
+```
+
+```
+#&gt; {xml_nodeset (1)}
+#&gt; [1] &lt;p&gt;This schedule lists every swim in the database. 383 events.&lt;/p&gt;
+```
+
+--
+
+**Step 3**
+
+To extract the contents between the tags:
+
+
+```r
+html_swim %&gt;% 
+  read_html() %&gt;% 
+  html_nodes(css = "p") %&gt;% 
+* html_text()
+```
+
+```
+#&gt; [1] "This schedule lists every swim in the database. 383 events."
+```
+
+---
+
+Suppose we want to extract and parse pieces of the information highlighted 
+below in yellow.
+
+.tiny[
+
+```r
+&lt;html lang=en&gt;
+&lt;head&gt;
+   &lt;title&gt;Rays Notebook: Open Water Swims 2020 — The Whole Shebang&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;main class=schedule&gt;
+&lt;h1&gt;The Whole Shebang&lt;/h1&gt;
+
+&lt;p&gt;This schedule lists every swim in the database. 383 events.&lt;/p&gt;
+
+&lt;table class=schedule&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Date&lt;/th&gt;&lt;th&gt;Location&lt;/th&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Distance&lt;/th&gt;&lt;th&gt;More&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+
+&lt;tr id=January&gt;
+&lt;td class=date&gt;Jan 12, Sun&lt;/td&gt;
+*&lt;td class=where&gt;
+*  &lt;a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997"&gt;Petersburg, FL&lt;/a&gt;
+*  &lt;span class=more&gt;
+*  Gandy Beach, Gandy Blvd N St, Petersburg, FL
+*  &lt;/span&gt;
+*&lt;/td&gt;
+&lt;td class=name&gt;&lt;a href="http://tampabayfrogman.com/"&gt;Tampa Bay Frogman&lt;/a&gt;&lt;/td&gt;
+&lt;td class=distance&gt;5 km&lt;/td&gt;
+&lt;td class=more&gt;&lt;span class=time&gt;7:15 AM&lt;/span&gt;, Old Tampa Bay.&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+```
+]
+
+---
+
+To select all elements with `class="where"`:
+
+
+```r
+html_swim %&gt;% 
+  read_html() %&gt;% 
+* html_nodes(css = "[class=where]")
+```
+
+```
+#&gt; {xml_nodeset (1)}
+#&gt; [1] &lt;td class="where"&gt;\n   &lt;a class="mapq" href="http://www.google.com/maps/? ...
+```
+
+--
+
+To extract the text:
+
+
+```r
+html_swim %&gt;% 
+  read_html() %&gt;% 
+  html_nodes(css = "[class=where]") %&gt;% 
+* html_text()
+```
+
+```
+#&gt; [1] "\n   Petersburg, FL\n   \n   Gandy Beach, Gandy Blvd N St, Petersburg, FL\n   \n"
+```
+
+--
+
+To extract the attributes:
+
+
+```r
+html_swim %&gt;% 
+  read_html() %&gt;% 
+  html_nodes(css = "[class=where]") %&gt;% 
+* html_attrs()
+```
+
+```
+#&gt; [[1]]
+#&gt;   class 
+#&gt; "where"
+```
+
+---
+
+Suppose we want to extract and parse the information highlighted below in
+yellow.
+
+.tiny[
+
+```r
+&lt;html lang=en&gt;
+&lt;head&gt;
+   &lt;title&gt;Rays Notebook: Open Water Swims 2020 — The Whole Shebang&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;main class=schedule&gt;
+&lt;h1&gt;The Whole Shebang&lt;/h1&gt;
+
+&lt;p&gt;This schedule lists every swim in the database. 383 events.&lt;/p&gt;
+
+&lt;table class=schedule&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Date&lt;/th&gt;&lt;th&gt;Location&lt;/th&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Distance&lt;/th&gt;&lt;th&gt;More&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+
+&lt;tr id=January&gt;
+&lt;td class=date&gt;Jan 12, Sun&lt;/td&gt;
+&lt;td class=where&gt;
+*  &lt;a class=mapq href="http://www.google.com/maps/?q=27.865501,-82.631997"&gt;Petersburg, FL&lt;/a&gt;
+   &lt;span class=more&gt;
+   Gandy Beach, Gandy Blvd N St, Petersburg, FL
+   &lt;/span&gt;
+&lt;/td&gt;
+*&lt;td class=name&gt;&lt;a href="http://tampabayfrogman.com/"&gt;Tampa Bay Frogman&lt;/a&gt;&lt;/td&gt;
+&lt;td class=distance&gt;5 km&lt;/td&gt;
+&lt;td class=more&gt;&lt;span class=time&gt;7:15 AM&lt;/span&gt;, Old Tampa Bay.&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+```
+]
+
+---
+
+To extract the links (those with an `href` attribute):
+
+
+```r
+html_swim %&gt;% 
+  read_html() %&gt;% 
+* html_nodes(css = "[href]")
+```
+
+```
+#&gt; {xml_nodeset (2)}
+#&gt; [1] &lt;a class="mapq" href="http://www.google.com/maps/?q=27.865501,-82.631997" ...
+#&gt; [2] &lt;a href="http://tampabayfrogman.com/"&gt;Tampa Bay Frogman&lt;/a&gt;
+```
+
+--
+
+To get only the URLs (value of the `href` attribute):
+
+
+```r
+html_swim %&gt;% 
+  read_html() %&gt;% 
+  html_nodes(css = "[href]") %&gt;% 
+* html_attr("href")
+```
+
+```
+#&gt; [1] "http://www.google.com/maps/?q=27.865501,-82.631997"
+#&gt; [2] "http://tampabayfrogman.com/"
+```
+
+
+---
+
+## SelectorGadget
+
+[SelectorGadget](https://selectorgadget.com/) makes identifying the CSS 
+selector you need by easily clicking on items on a webpage.
+
+&lt;center&gt;
+&lt;iframe title="vimeo-player" src="https://player.vimeo.com/video/52055686" width="800" height="400" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;
+&lt;/center&gt;
+
+---
+
+class: inverse, center, middle
+
+# Live demo
+
+---
+
+## Exercise
+
+Go to http://books.toscrape.com/catalogue/page-1.html and scrape the first 
+five pages of data on books with regards to their
+
+1. title
+2. price
+3. star rating
+
+Organize your results in a neatly formatted tibble similar to below.
+
+
+```r
+# A tibble: 100 x 3
+   title                                             price rating
+   &lt;chr&gt;                                             &lt;chr&gt; &lt;chr&gt; 
+ 1 A Light in the Attic                              £51.… Three 
+ 2 Tipping the Velvet                                £53.… One   
+ 3 Soumission                                        £50.… One   
+ 4 Sharp Objects                                     £47.… Four  
+ 5 Sapiens: A Brief History of Humankind             £54.… Five  
+ 6 The Requiem Red                                   £22.… One   
+ 7 The Dirty Little Secrets of Getting Your Dream J… £33.… Four  
+ 8 The Coming Woman: A Novel Based on the Life of t… £17.… Three 
+ 9 The Boys in the Boat: Nine Americans and Their E… £22.… Four  
+10 The Black Maria                                   £52.… One   
+# … with 90 more rows
+```
+
+???
+
+## Solution
+
+
+
+```r
+# example for page 1, see how everything works
+url &lt;- "http://books.toscrape.com/catalogue/page-1.html"
+
+read_html(url) %&gt;% 
+  html_nodes(css = ".price_color") %&gt;% 
+  html_text()
+
+read_html(url) %&gt;% 
+  html_nodes(css = ".product_pod a") %&gt;% 
+  html_attr("title") %&gt;% 
+  .[!is.na(.)]
+
+read_html(url) %&gt;% 
+  html_nodes(css = ".star-rating") %&gt;% 
+  html_attr(name = "class") %&gt;% 
+  str_remove(pattern = "star-rating ")
+
+
+# turn our code into a function
+get_books &lt;- function(page) {
+  
+  base_url &lt;- "http://books.toscrape.com/catalogue/page-"
+  url &lt;- str_c(base_url, page, ".html")
+  
+  books_html &lt;- read_html(url)
+  
+  prices &lt;- books_html %&gt;% 
+    html_nodes(css = ".price_color") %&gt;% 
+    html_text()
+  
+  titles &lt;- books_html %&gt;% 
+    html_nodes(css = ".product_pod a") %&gt;% 
+    html_attr("title") %&gt;% 
+    .[!is.na(.)]
+
+  ratings &lt;- books_html %&gt;% 
+    html_nodes(css = ".star-rating") %&gt;% 
+    html_attr(name = "class") %&gt;% 
+    str_remove(pattern = "star-rating ")
+  
+  books_df &lt;- tibble(
+    title  = titles,
+    price  = prices,
+    rating = ratings
+  )
+  
+  return(books_df)
+}
+
+# iterate across pages
+
+pages &lt;- 1:5
+books &lt;- map_df(pages, get_books)
+```
+
+---
+
+## References
+
+1. Easily Harvest (Scrape) Web Pages. (2020). Rvest.tidyverse.org. 
+   https://rvest.tidyverse.org/.
+
+2. W3Schools Online Web Tutorials. (2020). W3schools.com. 
+   https://www.w3schools.com/.
+
+3. SelectorGadget: point and click CSS selectors. (2020). Selectorgadget.com. 
+   https://selectorgadget.com/.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

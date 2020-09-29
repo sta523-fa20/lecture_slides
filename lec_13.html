@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Web scraping part II</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Web scraping part II
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [Web scraping cheat sheet](https://github.com/yusuzech/r-web-scraping-cheat-sheet/blob/master/README.md)
+- `RSelenium` [website](http://ropensci.github.io/RSelenium/)
+    
+
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## Hypertext Markup Language
+
+- HTML describes the structure of a web page; your browser interprets the 
+  structure and contents and displays the results.
+  
+- The basic building blocks include elements, tags, and attributes.
+    - an element is a component of an HTML document
+    - elements contain tags (start and end tag)
+    - attributes provide additional information about HTML elements
+
+&lt;center&gt;
+&lt;img src="images/html_structure.png" height="300" width="450"&gt;
+&lt;/center&gt;
+
+---
+
+## HTML vs. XML
+
+.tiny.pull-left[
+**HTML snippet**
+```html
+&lt;tr&gt;
+&lt;td class=date&gt;Jul 11, Sat&lt;/td&gt;
+&lt;td class=where&gt;
+   &lt;a class=mapq href="http://www.google.com/maps/?q=43.639648,-71.779373"&gt;Bristol, NH&lt;/a&gt;
+   &lt;span class=more&gt;
+   Wellington SP, West Shore Rd, Bristol, NH
+   {43.639648,-71.779373}
+   &lt;a class="maplink" href="http://bing.com/maps/default.aspx?v=2&amp;amp;cp=43.63965~-71.77937&amp;amp;sp=point.43.63965_-71.77937_🏊&amp;amp;style=r"&gt;🄱&lt;/a&gt;
+   &lt;a class="maplink" href="http://www.google.com/maps/?q=43.63965,-71.77937"&gt;🄶&lt;/a&gt;
+   &lt;a class="maplink" href="https://www.mapquest.com/latlng/43.63965,-71.77937"&gt;🄼&lt;/a&gt;
+   &lt;a class="maplink" href="http://www.openstreetmap.org/?=&amp;amp;mlat=43.63965&amp;amp;mlon=-71.77937"&gt;🄾&lt;/a&gt;
+   &lt;/span&gt;
+&lt;/td&gt;
+&lt;td class=name&gt;&lt;a href="http://www.swimnewfoundlake.com/"&gt;Swim with a Mission&lt;/a&gt;&lt;/td&gt;
+&lt;td class=distance&gt;5 km, 10 km, 10 mi&lt;/td&gt;
+&lt;td class=more&gt;&lt;span class=time&gt;7:00 AM&lt;/span&gt;, Newfound Lake. Ⓡ&lt;/td&gt;
+&lt;/tr&gt;
+```
+]
+
+.tiny.pull-right[
+**XML snippet**
+```xml
+&lt;swim&gt;
+  Swim with a Mission
+  &lt;location&gt;
+    Wellington SP, West Shore Rd, Bristol, NH
+  &lt;/location&gt;
+  &lt;link&gt;
+    http://www.swimnewfoundlake.com/
+  &lt;/link&gt;
+  &lt;date&gt;
+    Jul 11, Sat
+  &lt;/date&gt;
+  &lt;distance&gt;
+    5 km, 10 km, 10 mi
+  &lt;/distance&gt;
+&lt;/swim&gt;
+```
+]
+
+---
+
+## SelectorGadget
+
+In CSS, selectors are patterns used to select the element(s) you want to style.
+
+[SelectorGadget](https://selectorgadget.com/) makes identifying the CSS 
+selector you need as easy as clicking on items on a webpage.
+
+&lt;center&gt;
+&lt;iframe title="vimeo-player" src="https://player.vimeo.com/video/52055686" width="600" height="400" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;
+&lt;/center&gt;
+
+---
+
+## Web scraping workflow
+
+1. Understand the website's hierarchy and what information you need.
+
+--
+
+2. Use SelectorGadget to identify relevant CSS selectors.
+
+--
+
+3. Read html by passing a url and subset the resulting html document using
+   CSS selectors.
+    
+    ```r
+    read_html(url) %&gt;% 
+      html_nodes(css = "specified_css_selector")
+    ```
+--
+4. Further extract attributes, text, or tags by adding another layer with
+    
+    ```r
+    read_html(url) %&gt;% 
+      html_nodes(css = "specified_css_selector") %&gt;% 
+      html_*()
+    ```
+   where `*` is `text`, `attr`, `attrs`, `name`, or `table`.
+
+---
+
+## Example with `html_table()`
+
+http://www.tornadohistoryproject.com/tornado/North-Carolina/2017/table
+
+.tiny[
+
+```r
+library(rvest)
+library(tidyverse)
+
+url &lt;- "http://www.tornadohistoryproject.com/tornado/North-Carolina/2017/table"
+
+nc_tornado &lt;- read_html(url) %&gt;% 
+  html_nodes("#results") %&gt;% 
+  html_table(header = TRUE) %&gt;% 
+  .[[1]] %&gt;% 
+  janitor::clean_names() %&gt;% 
+  select(date:lift_lon)
+
+glimpse(nc_tornado)
+```
+
+```
+#&gt; Rows: 40
+#&gt; Columns: 15
+#&gt; $ date              &lt;chr&gt; "2017-02-15", "2017-03-31", "2017-05-01", "2017-05-…
+#&gt; $ time              &lt;chr&gt; "10:53:00 3", "16:15:00 3", "13:54:00 3", "01:12:00…
+#&gt; $ state_s           &lt;chr&gt; "North Carolina", "North Carolina", "North Carolina…
+#&gt; $ fujita            &lt;chr&gt; "1", "1", "0", "0", "1", "0", "0", "0", "1", "Fujit…
+#&gt; $ fatalities        &lt;chr&gt; "0", "0", "0", "0", "0", "0", "0", "0", "0", "Fatal…
+#&gt; $ injuries          &lt;chr&gt; "0", "0", "0", "0", "0", "0", "0", "0", "1", "Injur…
+#&gt; $ width             &lt;chr&gt; "60", "100", "50", "375", "250", "100", "75", "30",…
+#&gt; $ length            &lt;chr&gt; "3.18", "4.8", "2.67", "3.26", "1", "11.71", "8.12"…
+#&gt; $ affected_counties &lt;chr&gt; "Brunswick", "Bertie", "Catawba", "Rockingham", "Gr…
+#&gt; $ damage            &lt;chr&gt; "$80000", "$250000", "$10000", "$40", "$100000", "$…
+#&gt; $ crop_loss         &lt;chr&gt; "-", "-", "-", "-", "-", "-", "-", "-", "-", "Crop …
+#&gt; $ touch_lat         &lt;chr&gt; "34.006", "36.2081", "35.61", "36.4869", "36.365", …
+#&gt; $ touch_lon         &lt;chr&gt; "-78.6088", "-76.9334", "-81.2", "-79.7452", "-78.5…
+#&gt; $ lift_lat          &lt;chr&gt; "34.009", "36.2213", "35.64", "36.534", "36.3792", …
+#&gt; $ lift_lon          &lt;chr&gt; "-78.5534", "-76.8488", "-81.17", "-79.7494", "-78.…
+```
+]
+
+---
+
+## Overview
+
+![](images/rvest_httr_fcns.png)
+
+*Source*: https://github.com/yusuzech/r-web-scraping-cheat-sheet/blob/master/README.md
+
+---
+
+## Recall previous exercise
+
+Go to http://books.toscrape.com/catalogue/page-1.html and scrape the first 
+five pages of data on books with regards to their
+
+1. title
+2. price
+3. star rating
+
+Organize your results in a neatly formatted tibble similar to below.
+
+
+```r
+# A tibble: 100 x 3
+   title                                             price rating
+   &lt;chr&gt;                                             &lt;chr&gt; &lt;chr&gt; 
+ 1 A Light in the Attic                              £51.… Three 
+ 2 Tipping the Velvet                                £53.… One   
+ 3 Soumission                                        £50.… One   
+ 4 Sharp Objects                                     £47.… Four  
+ 5 Sapiens: A Brief History of Humankind             £54.… Five  
+ 6 The Requiem Red                                   £22.… One   
+ 7 The Dirty Little Secrets of Getting Your Dream J… £33.… Four  
+ 8 The Coming Woman: A Novel Based on the Life of t… £17.… Three 
+ 9 The Boys in the Boat: Nine Americans and Their E… £22.… Four  
+10 The Black Maria                                   £52.… One   
+# … with 90 more rows
+```
+
+---
+
+class: inverse, center, middle
+
+# Web scraping considerations
+
+---
+
+## Best practices
+
+- Abide by a site's terms and conditions.
+
+--
+
+- Respect robots.txt.
+    - https://www.facebook.com/robots.txt
+    - https://www.wegmans.com/robots.txt
+    - https://www.google.com/robots.txt
+    
+--
+    
+- Cache your `read_html()` chunks. Isolate these chunks.
+
+--
+
+- Avoid using `read_html()` in code that is iterated.
+
+--
+
+- Do not overload the server at peak hours.
+    - Implement delayed crawls: `Sys.sleep(rexp(1) + 4)`
+    
+--
+
+- If available, use a site's API.
+
+--
+
+- Do not violate any copyright laws.
+
+---
+
+## Other considerations
+
+- Disguise your IP address.
+    - `httr::use_proxy()`
+&lt;br&gt;&lt;br&gt;&lt;br&gt;
+--
+
+- Avoid scraping behind pages protected by log-in, unless it is permitted
+  by the site.
+    - `html_session()`
+&lt;br&gt;&lt;br&gt;&lt;br&gt;
+--
+  
+- Watch out for honey pot traps - invisible links to normal visitors, 
+  but present in HTML code and found by web scrapers.
+
+---
+
+class: inverse, center, middle
+
+# Beyond `rvest` and static sites
+
+---
+
+## Limitations of using `rvest` functions
+
+- It is difficult to make your code reproducible long term. When a website or
+  the HTML changes, your code may no longer work.
+  &lt;br/&gt;&lt;br/&gt;
+      - CSS selectors change
+      - Contents are moved
+      - Switch from HTML to JavaScript
+
+&lt;br&gt;&lt;br&gt;
+--
+
+- Websites that rely heavily on JavaScript
+
+---
+
+## What is JavaScript?
+
+- Scripting language for building interactive web pages
+
+- Basis for web, mobile, and network applications
+
+- Every browser has a JavaScript engine that can execute JavaScript code.
+    - Chrome and Edge: V8
+    - Safari: JavaScriptCore
+    - Firefox: SpiderMonkey
+    
+&lt;br&gt;
+
+--
+
+If `read_html()` is meant for HTML, what can we do?
+
+---
+
+## Possible solutions
+
+1. Use your browser's developer tools (Chrome is easiest)
+
+2. Execute JavaScript in R
+
+3. Use package `Rselenium` or other web drivers
+    - http://ropensci.github.io/RSelenium/
+
+--
+
+We'll focus on the first option...
+
+&gt;In order for the information to get from their server and show up on a page in 
+your browser, that information had to have been returned in an HTTP response 
+somewhere. &lt;br&gt;&lt;br&gt;
+It usually means that you won’t be making an HTTP request to the page’s URL 
+that you see at the top of your browser window, but instead you’ll need to find 
+the URL of the AJAX request that’s going on in the background to fetch the data 
+from the server and load it into the page.&lt;br/&gt;&lt;br/&gt;
+Hartley Brody
+
+---
+
+class: inverse, center, middle
+
+# Live demo
+
+---
+
+## Exercise
+
+http://quotes.toscrape.com/ provides quotes for scraping. This site scraping
+sandox provides various endpoints that present different scraping challenges.
+Try and scrape the first 50 quotes and authors at the following endpoints.
+
+- http://quotes.toscrape.com/scroll
+- http://quotes.toscrape.com/js/
+
+First, try using the typical approach with `rvest` to understand what is 
+going on.
+   
+---
+
+## References
+
+1. Scraping Sandbox. (2020). http://toscrape.com/.
+
+2. SelectorGadget: point and click CSS selectors. (2020). Selectorgadget.com. 
+   https://selectorgadget.com/.
+
+3. yusuzech/r-web-scraping-cheat-sheet. (2020).
+   https://github.com/yusuzech/r-web-scraping-cheat-sheet.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

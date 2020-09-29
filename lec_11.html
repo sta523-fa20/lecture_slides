@@ -971,7 +971,322 @@ Resource Conservation and Recovery Act (RCRA).
 
 class: inverse, center, middle
 
-# Next time: Manipulating `sf` type objects
+# Manipulating `sf` type objects
+
+---
+
+## Change the CRS
+
+We'll make a quick change to the CRS to better manipulate the geometries.
+
+
+```r
+nc &lt;- st_transform(nc, st_crs(32119))
+nc_gamelands &lt;- st_transform(nc_gamelands, st_crs(32119))
+```
+
+*Source*: https://spatialreference.org/ref/epsg/32119/
+
+&lt;br/&gt;
+
+--
+
+To make it easier to view the tibbles, we'll drop some of the fields.
+
+
+```r
+nc &lt;- nc %&gt;% 
+  select(NAME)
+
+nc_gamelands &lt;- nc_gamelands %&gt;% 
+  select(GML_HAB)
+```
+
+
+---
+
+## Intersects
+
+
+```r
+durham_county &lt;- nc %&gt;% 
+  filter(NAME == "Durham")
+durham_county
+```
+
+```
+#&gt; Simple feature collection with 1 feature and 1 field
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: 607985.9 ymin: 233840.6 xmax: 636298.9 ymax: 275557.4
+#&gt; projected CRS:  NAD83 / North Carolina
+#&gt;     NAME                       geometry
+#&gt; 1 Durham MULTIPOLYGON (((607985.9 23...
+```
+
+---
+
+
+```r
+nc[durham_county, ]
+```
+
+```
+#&gt; Simple feature collection with 6 features and 1 field
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: 559249.4 ymin: 195329 xmax: 676988.9 ymax: 310237
+#&gt; projected CRS:  NAD83 / North Carolina
+#&gt;         NAME                       geometry
+#&gt; 13 Granville MULTIPOLYGON (((632225.8 25...
+#&gt; 14    Person MULTIPOLYGON (((626993.2 27...
+#&gt; 29    Orange MULTIPOLYGON (((607985.9 23...
+#&gt; 30    Durham MULTIPOLYGON (((607985.9 23...
+#&gt; 37      Wake MULTIPOLYGON (((616777.2 20...
+#&gt; 48   Chatham MULTIPOLYGON (((559249.4 19...
+```
+
+&lt;br/&gt;
+
+--
+
+**What is happening here? How can we verify this in the help?**
+
+---
+
+
+```r
+st_intersects(nc, durham_county, sparse = F) %&gt;% 
+  nc[., ]
+```
+
+```
+#&gt; Simple feature collection with 6 features and 1 field
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: 559249.4 ymin: 195329 xmax: 676988.9 ymax: 310237
+#&gt; projected CRS:  NAD83 / North Carolina
+#&gt;         NAME                       geometry
+#&gt; 13 Granville MULTIPOLYGON (((632225.8 25...
+#&gt; 14    Person MULTIPOLYGON (((626993.2 27...
+#&gt; 29    Orange MULTIPOLYGON (((607985.9 23...
+#&gt; 30    Durham MULTIPOLYGON (((607985.9 23...
+#&gt; 37      Wake MULTIPOLYGON (((616777.2 20...
+#&gt; 48   Chatham MULTIPOLYGON (((559249.4 19...
+```
+
+&lt;br/&gt;
+
+--
+
+Intersects finds if `nc` and `durham_county` geometries share any space.
+
+---
+
+## Touches
+
+
+```r
+st_touches(nc, durham_county, sparse = F) %&gt;% 
+  nc[., ]
+```
+
+```
+#&gt; Simple feature collection with 5 features and 1 field
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: 559249.4 ymin: 195329 xmax: 676988.9 ymax: 310237
+#&gt; projected CRS:  NAD83 / North Carolina
+#&gt;         NAME                       geometry
+#&gt; 13 Granville MULTIPOLYGON (((632225.8 25...
+#&gt; 14    Person MULTIPOLYGON (((626993.2 27...
+#&gt; 29    Orange MULTIPOLYGON (((607985.9 23...
+#&gt; 37      Wake MULTIPOLYGON (((616777.2 20...
+#&gt; 48   Chatham MULTIPOLYGON (((559249.4 19...
+```
+
+&lt;br/&gt;
+
+--
+
+Touches identifies if `nc` and `durham_county` geometries share a common
+point but their interiors do not intersect.
+
+---
+
+## Join
+
+Suppose we want to plot all the game lands that intersect with Durham county or
+one of its neighboring counties.
+
+
+```r
+durham_area_counties &lt;- st_intersects(nc, durham_county, sparse = F) %&gt;% 
+  nc[., ]
+
+durham_area_gamelands &lt;- st_join(nc_gamelands, durham_area_counties,
+                                 left = FALSE,
+                                 join = st_intersects)
+```
+
+--
+
+.pull-left[
+
+```r
+nc_gamelands
+```
+
+
+```r
+          GML_HAB                       geometry
+1           Alcoa MULTIPOLYGON (((512096.2 18...
+2 Alligator River MULTIPOLYGON (((869633.1 24...
+3      Angola Bay MULTIPOLYGON (((713079.4 11...
+                      ⋮            
+92      White Oak River MULTIPOLYGON (((779438 1142...
+93 Whitehall Plantation MULTIPOLYGON (((669904.7 77...
+94    William H. Silver MULTIPOLYGON (((233548.1 20...                                  
+```
+]
+
+.pull-right[
+
+```r
+durham_area_counties
+```
+
+
+```r
+        NAME                       geometry
+13 Granville MULTIPOLYGON (((632225.8 25...
+14    Person MULTIPOLYGON (((626993.2 27...
+29    Orange MULTIPOLYGON (((607985.9 23...
+30    Durham MULTIPOLYGON (((607985.9 23...
+37      Wake MULTIPOLYGON (((616777.2 20...
+48   Chatham MULTIPOLYGON (((559249.4 19...
+```
+]
+
+---
+
+
+```r
+durham_area_gamelands
+```
+
+```
+#&gt; Simple feature collection with 14 features and 2 fields
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: 588567.6 ymin: 196504.6 xmax: 649181.5 ymax: 309772.1
+#&gt; projected CRS:  NAD83 / North Carolina
+#&gt; First 10 features:
+#&gt;                    GML_HAB      NAME                       geometry
+#&gt; 8                 Buckhorn    Orange MULTIPOLYGON (((589723.7 25...
+#&gt; 12   Butner-Falls of Neuse Granville MULTIPOLYGON (((632994 2506...
+#&gt; 12.1 Butner-Falls of Neuse    Durham MULTIPOLYGON (((632994 2506...
+#&gt; 12.2 Butner-Falls of Neuse      Wake MULTIPOLYGON (((632994 2506...
+#&gt; 16                 Chatham   Chatham MULTIPOLYGON (((606729.9 20...
+#&gt; 33                  Harris      Wake MULTIPOLYGON (((610929.2 20...
+#&gt; 33.1                Harris   Chatham MULTIPOLYGON (((610929.2 20...
+#&gt; 37                    Hyco    Person MULTIPOLYGON (((602240.6 30...
+#&gt; 40                  Jordan    Orange MULTIPOLYGON (((600993.4 21...
+#&gt; 40.1                Jordan    Durham MULTIPOLYGON (((600993.4 21...
+```
+
+---
+
+## Proximity
+
+Suppose we want to find all the counties within 17,550 meters of Durham county.
+
+
+```r
+st_is_within_distance(durham_county, nc, dist = 17550, sparse = F) %&gt;% 
+  nc[., ]
+```
+
+```
+#&gt; Simple feature collection with 7 features and 1 field
+#&gt; geometry type:  MULTIPOLYGON
+#&gt; dimension:      XY
+#&gt; bbox:           xmin: 559249.4 ymin: 195329 xmax: 699000.5 ymax: 310237
+#&gt; projected CRS:  NAD83 / North Carolina
+#&gt;         NAME                       geometry
+#&gt; 13 Granville MULTIPOLYGON (((632225.8 25...
+#&gt; 14    Person MULTIPOLYGON (((626993.2 27...
+#&gt; 24  Franklin MULTIPOLYGON (((676988.9 22...
+#&gt; 29    Orange MULTIPOLYGON (((607985.9 23...
+#&gt; 30    Durham MULTIPOLYGON (((607985.9 23...
+#&gt; 37      Wake MULTIPOLYGON (((616777.2 20...
+#&gt; 48   Chatham MULTIPOLYGON (((559249.4 19...
+```
+
+---
+
+## Exercise
+
+Create a plot of North Carolina's Game Lands and all the waste sites within
+100 meters of a Game Land area.
+
+???
+
+## Solution
+
+.solution[
+
+```r
+waste &lt;- st_read("data/Hazardous_Waste_Sites.shp", quiet = T)
+waste &lt;- st_transform(waste, st_crs(nc_gamelands))
+```
+
+
+```r
+close_waste_lgl &lt;- st_is_within_distance(waste, nc_gamelands, 
+                                         dist = 100, sparse = F)
+close_waste &lt;- waste %&gt;% 
+  filter(apply(close_waste_lgl, 1, sum) &gt; 0)
+```
+
+
+```r
+nc_gamelands_mapview &lt;- mapview(nc_gamelands, col.regions = "#ff6700",
+        label = nc_gamelands$GML_HAB,
+        layer.name = "NC Gamelands")
+
+nc_waste_mapview &lt;- mapview(close_waste, col.regions = "#65ff00",
+                            alpha = .3,
+                            alpha.regions = .3,
+                            label = waste[, "SITE_NAME", drop = T],
+                            layer.name = "NC Waste Sites")
+
+nc_gamelands_mapview + nc_waste_mapview
+```
+
+
+```r
+ggplot(nc) +
+  geom_sf(alpha = .3) +
+  geom_sf(data = close_waste, color = "#65ff00", size = 3) +
+  geom_sf(data = nc_gamelands, fill = "#ff6700", alpha = .5) +
+  theme_bw()
+```
+
+]
+
+---
+
+## References
+
+1. Interactive Viewing of Spatial Data in R. (2020).         
+   https://r-spatial.github.io/mapview/index.html.
+   
+2. Melanie Frazier. Coordinate Reference Systems in R. 
+   https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/OverviewCoordinateReferenceSystems.pdf.
+   
+3. Simple Features for R. (2020). 
+   https://r-spatial.github.io/sf/.
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
