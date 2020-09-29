@@ -16,8 +16,8 @@ images and the CSS file for reproducibility.
 | Week 5  | Wed, Sep 16 | Advanced visualizations                |  :white_check_mark:     |
 |         | Fri, Sep 18 | String manipulation and regexes        |  :white_check_mark:     |
 | Week 6  | Wed, Sep 23 | Spatial data with sf                   |  :white_check_mark:     |
-|         | Fri, Sep 25 | Web scraping part I                    |                         |
-| Week 7  | Wed, Sep 30 | Web scraping part II                   |                         |
+|         | Fri, Sep 25 | Web scraping part I                    |  :white_check_mark:     |
+| Week 7  | Wed, Sep 30 | Web scraping part II                   |  :white_check_mark:     |
 |         | Fri, Oct 02 | Web APIs                               |                         |
 | Week 8  | Wed, Oct 07 | make                                   |                         |
 |         | Fri, Oct 09 | Shiny part I                           |                         |
