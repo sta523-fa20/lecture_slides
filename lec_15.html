@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>make</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# make
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [minimal make](http://kbroman.org/minimal_make/) by Karl Broman
+- [Why Use Make](https://bost.ocks.org/mike/make/) by Mike Bostock
+- GNU make [manual](https://www.gnu.org/software/make/manual/make.html)
+- [Make for Windows](http://gnuwin32.sourceforge.net/packages/make.htm)
+
+
+---
+
+## `make`
+
+- Automatically build software / libraries / documents by specifying 
+  dependencies via a file named `Makefile`
+    - provide instructions for what you want to build and how it can be built
+  
+- Originally created by Stuart Feldman in 1976 at Bell Labs
+
+- Almost universally available (all flavors of UNIX / Linux / OSX)
+
+&lt;br/&gt;
+
+Check for `make` with
+
+
+```bash
+make --version
+```
+
+```
+#&gt; GNU Make 3.81
+#&gt; Copyright (C) 2006  Free Software Foundation, Inc.
+#&gt; This is free software; see the source for copying conditions.
+#&gt; There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
+#&gt; PARTICULAR PURPOSE.
+#&gt; 
+#&gt; This program built for i386-apple-darwin11.3.0
+```
+
+---
+
+## `Makefile` structure
+
+```make
+target: prerequisite_1 prerequisite_2 ...
+  recipe
+  ...
+  ...
+```
+
+- `target` is the file you want to generate
+
+- `prerequisite_*` are the files the target file depends on
+
+- a recipe is an action that `make` carries out, 
+  commands you run in the terminal
+  
+Alternatively,
+
+```make
+targetfile: sourcefile
+  command
+  ...
+  ...
+```
+
+---
+
+## `Makefile` structure
+
+A more realistic structure:
+
+```make
+target: prerequisite_1 prerequisite_2 ...
+  recipe
+  ...
+  ...
+
+prerequisite_1: prerequisite_1a prerequisite_1b ...
+  recipe
+  ...
+  ...
+    
+prerequisite_2: prerequisite_2a prerequisite_2b ...
+  recipe
+  ...
+  ...
+```
+
+---
+
+## Example
+
+```make
+paper.html: paper.Rmd Fig1/fig.png Fig2/fig.png
+    Rscript -e "library(rmarkdown);render('paper.Rmd')"
+
+Fig1/fig.png: Fig1/fig.R
+    cd Fig1; Rscript fig.R
+
+Fig2/fig.png: Fig2/fig.R
+    cd Fig2; Rscript fig.R
+```
+
+&lt;br/&gt;
+
+What are the targets and dependencies?
+
+--
+
+&lt;br/&gt;
+
+The first target is the default goal of what `make` tries to create.
+
+---
+
+## Another example
+
+```make
+hd_cov_test_band.o: hd_cov_test_band.c
+	export PKG_CFLAGS="-fopenmp"
+	export PKG_LIBS="-lgomp"
+	R CMD SHLIB hd_cov_test_band.c
+
+clean:
+	rm hd_cov_test_band.o
+	rm hd_cov_test_band.so
+
+.PHONY: clean
+```
+
+---
+
+## How `make` processes a `Makefile`
+
+1. Once you have a `Makefile` written, type `make` in your terminal.
+```make
+make
+```
+2. `make` looks for files named `GNUmakefile`, `makefile`, or
+   `Makefile`.
+   
+3. The `make` program uses the `Makefile` data base and
+   last-modification times of the files to decide which of the files
+   need to be updated.
+   
+4. For each file that needs to be updated, the recipes are executed.
+
+--
+
+&lt;br/&gt;
+
+```make
+hd_cov_test_band.o: hd_cov_test_band.c
+	export PKG_CFLAGS="-fopenmp"
+	export PKG_LIBS="-lgomp"
+	R CMD SHLIB hd_cov_test_band.c
+```
+
+---
+
+## Understanding `make`
+
+Consider the `Makefile` below. I run `make`. Later, I change 
+some code in `Fig2/fig.R` and save the file. What is updated when I run 
+`make` again?
+
+```make
+paper.html: paper.Rmd Fig1/fig.png Fig2/fig.png
+    Rscript -e "library(rmarkdown);render('paper.Rmd')"
+
+Fig1/fig.png: Fig1/fig.R
+    cd Fig1;Rscript fig.R
+
+Fig2/fig.png: Fig2/fig.R
+    cd Fig2;Rscript fig.R
+```
+
+--
+
+&lt;br/&gt;
+
+What if I only change some text in `paper.Rmd` and then save the file?
+
+---
+
+## `Makefile` tips
+
+1. Name your file `Makefile`.
+
+2. Use `tab` to add recipes.
+
+3. Use `#` to add comments to your `Makefile`.
+
+4. Split long lines with `\`.
+
+5. Have one target precede each `:`.
+
+6. Remember, recipes are meant to be interpreted by the shell and thus
+   are written using shell syntax.
+
+7. Use semicolons to specify a sequence of recipes to be executed in a 
+   single shell invocation.
+   
+---
+
+class: inverse, center, middle
+
+# `make` Demo
+
+---
+
+class: inverse, center, middle
+
+# Some advanced `make`
+
+---
+
+## Variables
+
+Like R, or other languages, we can define variables.
+
+```make
+Fig1/fig.png: Fig1/fig.R
+    cd Fig1;Rscript fig.R
+```
+
+```make
+R_OPTS=--no-save --no-restore --no-site-file --no-init-file --no-environ
+
+Fig1/fig.png: Fig1/fig.R
+    cd Fig1;Rscript $(R_OPTS) fig.R
+```
+
+&lt;br/&gt;
+
+- Typically, we use uppercase letters for variable names.
+
+- Refer to a variable's value by `${MY_VARIABLE}` or `$(MY_VARIABLE)`.
+
+- Do not use `:`, `#`, `=`, or a white space in your variable's name.
+
+---
+
+## Built-in variables
+
+| Variable | Description                                |
+|---------:|--------------------------------------------|
+|     `$@` | the file name of the target                |
+|     `$&lt;` | the name of the first dependency           |
+|     `$^` | the names of all dependencies              |
+|  `$(@D)` | the directory part of the target           |
+|  `$(@F)` | the file part of the target                |
+|  `$(&lt;D)` | the directory part of the first dependency |
+|  `$(&lt;F)` | the file part of the first dependency      |
+
+---
+
+## Pattern rules
+
+Often we want to build several files in the same way. For these cases
+we can use `%` as a special wildcard character to match both targets
+and dependencies.
+
+Rather than our `Makefile` be
+
+```make
+Fig1/fig.png: Fig1/fig.R
+    cd Fig1; Rscript fig.R
+
+Fig2/fig.png: Fig2/fig.R
+    cd Fig2; Rscript fig.R
+```
+
+we can use built-in variables and patterns to have
+
+```make
+Fig%/fig.png: Fig%/fig.R
+    cd $(&lt;D);Rscript $(&lt;F)
+```
+
+- `%` can match any nonempty substring.
+
+- The substring that the `%` matches is called the stem.
+
+- A prerequisite with `%` has the same stem that was 
+  matched by the `%` in the target.
+
+---
+
+## Phony targets
+
+A phony target is one that is not really the name of a file; rather it is just 
+a name for a recipe to be executed when you make an explicit request. There are 
+two reasons to use a phony target: to avoid a conflict with a file of the same 
+name, and to improve performance.
+
+For example,
+
+```make
+clean:
+  rm *.log
+```
+
+would remove all `.log` files when `make clean` is run. However, a problem can 
+arise if we ever have a file named `clean`.
+
+--
+
+To make this more robust we can configure it as
+
+```make
+.PHONY: clean
+clean:
+  rm *.log
+```
+
+Command `make clean` will remove the log files regardless of whether
+a file named `clean` exists.
+
+---
+
+Another common phony target is `all`. Its prerequisites are all
+the individual programs we want to build. For example:
+
+```make
+.PHONY: all
+all: prog1 prog2 prog3
+
+prog1: prog1.o utils.o
+  cc -o prog1 prog1.o utils.o
+
+prog2: prog2.o
+  cc -o prog2 prog2.o
+
+prog3: prog3.o sort.o utils.o
+  cc -o prog3 prog3.o sort.o utils.o
+```
+
+&lt;br/&gt;
+
+Use `make` to build all the programs. Or build a subset by specifying
+each program's name: `make prog1 prog2`.
+
+---
+
+## Fancy `Makefile`
+
+Our original example:
+
+```make
+paper.html: paper.Rmd Fig1/fig.png Fig2/fig.png
+    Rscript -e "library(rmarkdown);render('paper.Rmd')"
+
+Fig1/fig.png: Fig1/fig.R
+    cd Fig1;Rscript fig.R
+
+Fig2/fig.png: Fig2/fig.R
+    cd Fig2;Rscript fig.R
+```
+--
+
+Update:
+
+```make
+all: paper.html
+
+paper.html: paper.Rmd Fig1/fig.png Fig2/fig.png
+    Rscript -e "library(rmarkdown);render('paper.Rmd')"
+
+Fig%/fig.png: Fig%/fig.R
+    cd $(&lt;D);Rscript $(&lt;F)
+
+clean:
+    rm paper.html
+    rm -f Fig*/*.png
+
+.PHONY: all clean
+```
+
+---
+
+## Another fancier `Makefile`
+
+```make
+SRC = $(wildcard *.Rmd)
+TAR_PDF = $(SRC:.Rmd=.pdf)
+TAR_HTML = $(SRC:.Rmd=.html)
+
+all: $(TAR_PDF) $(TAR_HTML)
+
+%.pdf: %.html
+	Rscript -e "pagedown::chrome_print('$(&lt;F)')"
+
+%.html: %.Rmd
+	Rscript -e "rmarkdown::render('$(&lt;F)')"
+
+clean:
+	rm *.pdf
+	rm *.html
+
+.PHONY: clean
+```
+
+---
+
+## Exercise
+
+Create a `Makefile` for the R project in the 
+[learn_make](https://github.com/sta523-fa20/learn_make) repository
+on GitHub. The target goal should be `learn_make.html`. The below steps will
+help guide you in creating `Makefile`.
+
+1. Diagram the dependency structure on paper.
+
+2. First, create a `Makefile` that only knits the Rmd file and 
+   produces the `learn_make.html` file.
+
+3. Next, add rules for the data dependencies.
+
+4. Add phony `clean_html` and `clean_data` targets that delete the html file and
+   delete the rds files in `data/`, respectively.
+   
+5. Revise your `Makefile` with built-in variables or other useful features.
+
+???
+
+```make
+learn_make.html: learn_make.Rmd data/ok_tor.rds data/fire_stations.rds data/school_districts.rds
+  Rscript -e "library(rmarkdown); render('learn_make.Rmd')"
+
+data/ok_tor.rds: R/get_tornadoes.R
+	Rscript $&lt;
+
+data/fire_stations.rds: R/get_fire_stations.R
+	Rscript $&lt;
+
+data/school_districts.rds: R/get_school_districts.R
+	Rscript $&lt;
+
+clean_html:
+	rm learn_make.html
+
+clean_data:
+	cd data; rm *.rds
+
+.PHONY: clean_html clean_data
+```
+
+---
+
+## References
+
+1. Broman, K. (2020). minimal make. http://kbroman.org/minimal_make/.
+
+2. GNU make. (2020). 
+   https://www.gnu.org/software/make/manual/make.html#toc-An-Introduction-to-Makefiles.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

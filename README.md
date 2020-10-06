@@ -18,8 +18,8 @@ images and the CSS file for reproducibility.
 | Week 6  | Wed, Sep 23 | Spatial data with sf                   |  :white_check_mark:     |
 |         | Fri, Sep 25 | Web scraping part I                    |  :white_check_mark:     |
 | Week 7  | Wed, Sep 30 | Web scraping part II                   |  :white_check_mark:     |
-|         | Fri, Oct 02 | Web APIs                               |                         |
-| Week 8  | Wed, Oct 07 | make                                   |                         |
+|         | Fri, Oct 02 | Web APIs                               |  :white_check_mark:     |
+| Week 8  | Wed, Oct 07 | make                                   |  :white_check_mark:     |
 |         | Fri, Oct 09 | Shiny part I                           |                         |
 | Week 9  | Wed, Oct 14 | Shiny part II                          |                         |
 |         | Fri, Oct 16 | Databases and SQL                      |                         |
