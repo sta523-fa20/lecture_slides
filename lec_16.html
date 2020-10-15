@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>R Shiny Part I</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# R Shiny Part I
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- Shiny [documentation](http://shiny.rstudio.com/)
+- Shiny [Widgets Gallery](http://shiny.rstudio.com/gallery/widget-gallery.html)
+- Shiny [Cheat Sheet](https://github.com/rstudio/cheatsheets/raw/master/shiny.pdf)
+
+---
+
+## What is Shiny?
+
+.pull-left[
+- Shiny is an R package.
+&lt;br/&gt;&lt;br/&gt;
+- Build web-based apps with R in RStudio.
+&lt;br/&gt;&lt;br/&gt;
+- Shiny can incorporate CSS themes and JavaScript actions.
+
+]
+
+.pull-right[
+![](images/shinylogo.png)
+]
+
+---
+
+## How does Shiny work?
+
+![](images/server1.png)
+
+---
+
+## How does Shiny work?
+
+![](images/server2.png)
+
+---
+
+## How does Shiny work?
+
+![](images/server3.png)
+
+---
+
+## Getting started
+
+- Open RStudio
+
+- Run `install.packages("shiny")`, if needed
+
+- Go to File `&gt;` New File `&gt;` Shiny Web App
+
+- Enter your application's name
+
+- Keep option Single File (app.R) selected
+
+- Enter the directory of where the application should be saved
+
+- File `app.R` should open, click Run App to see the result
+
+
+
+---
+
+## Main components of RShiny
+
+.pull-left[
+
+
+```r
+ # Load package shiny
+library(shiny)
+# Define UI for application
+ui &lt;- fluidPage(
+  
+  
+)
+
+# Define server logic
+server &lt;- function(input, output) {
+  
+  
+}
+
+# Build and run the application
+shinyApp(ui = ui, server = server)
+```
+
+]
+
+.pull-right[
+- Function `fluidPage()` creates a dynamic HTML user interface you see when you 
+  look at an RShiny app. Convention is to save this as an object named `ui`.
+  
+- Function `server()` is user-defined and contains R commands your computer 
+  or external server need to run the app.
+  
+- Function `shinyApp()` builds the app based on the user interface and 
+  server pair of code.
+]
+
+---
+
+## Available examples
+
+Enter any of the following in your Console to see the Shiny app in action 
+along with the code.
+
+
+```r
+runExample("01_hello")        # a histogram
+runExample("02_text")         # tables and data frames
+runExample("03_reactivity")   # a reactive expression
+runExample("04_mpg")          # global variables
+runExample("05_sliders")      # slider bars
+runExample("06_tabsets")      # tabbed panels
+runExample("07_widgets")      # help text and submit buttons
+runExample("08_html")         # Shiny app built from HTML
+runExample("09_upload")       # file upload wizard
+runExample("10_download")     # file download wizard
+runExample("11_timer")        # an automated timer
+```
+
+---
+
+class: inverse, center, middle
+
+# User interface
+
+---
+
+
+class: inverse, center, middle
+
+# User interface: inputs
+
+---
+
+## Input widgets
+
+![](images/inputs.png)
+
+---
+
+![](images/input_details.png)
+
+---
+
+## Adding an input widget
+
+Most input widgets are set-up as `*Input(inputId, label, ...)` or
+`*Button(inputId, label, ...)`, where * is replaced with the widget's name.
+
+
+For example, to create a slider widget we can write
+
+
+```r
+sliderInput(inputId = "bins", label = "Number of bins:", 
+            min = 1, max = 50, value = 30)
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+Typically, the first two widget function argument names are not specified 
+since most widgets first take an `inputId` and `label`. Argument `inputId` is
+where you specify a name for the widget (this is not seen by the user); argument 
+`label` is the label that will appear in your app 
+(this will be seen by the user).
+
+---
+
+## What do these widget functions return?
+
+
+```r
+sliderInput(inputId = "bins", label = "Number of bins:", 
+            min = 1, max = 50, value = 30)
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+```html
+&lt;div class="form-group shiny-input-container"&gt;
+  &lt;label class="control-label" for="bins"&gt;Number of bins:&lt;/label&gt;
+  &lt;input class="js-range-slider" id="bins" data-min="1" data-max="50" data-from="30" data-step="1" data-grid="true" data-grid-num="9.8" data-grid-snap="false" data-prettify-separator="," data-prettify-enabled="true" data-keyboard="true" data-data-type="number"/&gt;
+&lt;/div&gt;
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+Some HTML!
+
+---
+
+## Assortment of input widgets
+
+.pull-left[
+.tiny[
+
+```r
+ui &lt;- fluidPage(
+  # add slider
+  sliderInput("bins", "Number of bins:",
+              min = 1, max = 50, value = 30)
+)
+
+server &lt;- function(input, output) {
+  
+}
+
+shinyApp(ui = ui, server = server)
+```
+]
+]
+
+.pull-right[
+
+![](images/sliderInput.png)
+
+]
+
+---
+
+## Assortment of input widgets
+
+.pull-left[
+.tiny[
+
+```r
+ui &lt;- fluidPage(
+  # add slider
+  sliderInput("bins", "Number of bins:",
+              min = 1, max = 50, value = 30),
+  # text box input
+  textInput("title", "Histogram title", 
+            value = "Histogram")
+)
+
+server &lt;- function(input, output) {
+  
+}
+
+shinyApp(ui = ui, server = server)
+```
+]
+]
+
+.pull-right[
+
+![](images/multiple_inputs.png)
+
+]
+
+---
+
+## Assortment of input widgets
+
+.pull-left[
+.tiny[
+
+```r
+ui &lt;- fluidPage(
+  # add slider
+  sliderInput("bins", "Number of bins:",
+              min = 1, max = 50, value = 30),
+  # text box input
+  textInput("title", "Histogram title", 
+            value = "Histogram"),
+  # combo box
+  selectInput("color", "Histogram fill",
+              choices = c("Red", "White", "Blue"),
+              selected = "Red")
+)
+
+server &lt;- function(input, output) {
+  
+}
+
+shinyApp(ui = ui, server = server)
+```
+]
+]
+
+.pull-right[
+
+![](images/multiple_inputs2.png)
+
+]
+
+--
+
+Continue to add as many additional widgets as you want/need.
+
+---
+
+class: inverse, center, middle
+
+# User interface: outputs
+
+---
+
+## Output functions
+
+Inputs are added with `*Input()`. Similarly, outputs in Shiny are added with
+`*Output()`.
+
+|     Output function    |   Creates  |
+|:----------------------:|:----------:|
+| `dataTableOutput()`    | data table |
+| `htmlOutput()`         | raw HTML   |
+| `imageOutput()`        | image      |
+| `plotOutput()`         | plot       |
+| `tableOutput()`        | table      |
+| `textOutput()`         | text       |
+| `uiOutput()`           | raw HTML   |
+| `verbatimTextOutput()` | text       |
+
+---
+
+## Output function details
+
+![](images/outputs.png)
+
+&lt;br/&gt;
+
+The first argument for each output function is `outputId`. This argument
+is where you specify a name for the output (this is not seen by the user). This
+name will serve as reference for code in function `server()`.
+
+---
+
+## Output function
+
+.pull-left[
+.tiny[
+
+```r
+ui &lt;- fluidPage(
+  # add slider
+  sliderInput("bins", "Number of bins:",
+              min = 1, max = 50, 
+              value = 30),
+  
+  plotOutput(outputId = "hist")
+)
+
+server &lt;- function(input, output) {
+  
+}
+
+shinyApp(ui = ui, server = server)
+```
+]
+]
+
+.pull-right[
+
+![](images/sliderInput.png)
+
+]
+
+--
+
+&lt;br/&gt;&lt;br/&gt;
+
+Our code `plotOutput(outputId = "hist")` allocates space for a plot. We haven’t 
+created anything yet, hence no plot is visible.
+
+---
+
+## What do these output functions return?
+
+
+```r
+plotOutput(outputId = "hist")
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+```html
+&lt;div id="hist" class="shiny-plot-output" style="width: 100% ; height: 400px"&gt;&lt;/div&gt;
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+Some HTML!
+
+---
+
+## User interface review
+
+- Build the user interface inside function `fluidPage()` and save it 
+  as an object named `ui`.
+
+- Function `fluidPage()` scales its components in realtime to fill all 
+  available browser width - dynamic HTML user interface.
+
+- Build inputs with `*Input(inputId, label, ...)`.
+
+- Build outputs with `*Output(outputId, ...)`.
+
+- Separate multiple inputs and outputs with commas.
+
+- Run your app after each added input or output to minimize complications
+  later on.
+
+---
+
+## Beyond the UI
+
+You have a user interface built. Why does it not do anything?
+
+--
+
+&lt;br/&gt;&lt;br/&gt;
+
+You need to give R commands that react when inputs are provided or are changed. 
+These reactions are seen by updates to the outputs. Take a look at
+https://shiny.rstudio.com/gallery/tabsets.html. As you change inputs, look at
+what is highlighted in function `server()`.
+
+--
+
+&lt;br/&gt;&lt;br/&gt;
+
+This is where function `server()`, that you create, will come into play.
+
+---
+
+class: inverse, center, middle
+
+# Server
+
+---
+
+## Function `server()`
+
+
+```r
+server &lt;- function(input, output) {
+  
+  
+}
+```
+
+This function plays a special role in the Shiny process; it builds a list-like 
+object named `output` that contains all of the code needed to update the R 
+objects in your app. Each R object needs to have its own entry in the list.
+
+--
+
+&lt;br/&gt;&lt;br/&gt;
+
+You can create an entry by defining a new element for output within the server function. The element name should match the name of the reactive element that you created in the user interface. This is where inputId and outputId come into play.
+
+---
+
+## Steps to create the `server()` function
+
+1. Save objects to display to `output$&lt;outputId&gt;`, where `&lt;outputId&gt;` is the 
+   name given from function `*Output()`.
+    
+    ```r
+    server &lt;- function(input, output) { 
+      output$hist &lt;- # code
+    }
+    ```
+
+2. Generally, build these `output$&lt;outputId&gt;` objects with the family of 
+   functions `render*()`.
+    
+    ```r
+    server &lt;- function(input, output) { 
+      output$hist &lt;- renderPlot({
+        # code to build your object
+        # in this case, code to create
+        # the histogram
+      }) 
+    }
+    ```
+
+3. Access your input values with `input$&lt;inputId&gt;`, where `&lt;inputID&gt;`
+   is the name given from function `*Input()`.
+
+---
+
+## Render functions
+
+|     Render function    |   Creates a reactive |
+|:----------------------:|:--------------------|
+| `renderDataTable()`    | data table           |
+| `renderImage()`        | image             |
+| `renderPlot()`         | plot                |
+| `renderPrint()`        | version of the given function that captures print output |
+| `renderTable()`        | table                |
+| `renderText()`         | version of the given function to turn its result into a character vector. |
+| `renderUI()`           | HTML             |
+
+---
+
+## Render and Output connection
+
+![](images/outputs.png)
+
+Each `render*()` function only requires a single argument: an R expression 
+surrounded by braces, `{` `}`. The expression can be one simple line of code, 
+or it can involve many.
+
+---
+
+## Reactivity
+
+Assuming a well-built Shiny app, every time the user moves the slider, 
+selects a value in a combo box, selects a new radio button option,
+outputs will automatically get updated when inputs change.
+
+This is known as reactivity. Reactivity automatically occurs whenever 
+you use an input value to render an output object.
+
+---
+
+## Function `server()` review
+
+- The server function does the work in terms of building and rebuilding R 
+  objects that ultimately get displayed to the user in the user interface.
+
+- Save output you build to `output$&lt;outputId&gt;`.
+
+- Build output with a `render*()` function.
+
+- Access inputs with `input$&lt;inputId&gt;`.
+
+- Multiple outputs can be placed in the server function.
+
+- Reactivity happens automatically when you use inputs to build rendered
+  outputs.
+
+---
+
+class: inverse, center, middle
+
+# Share your app
+
+---
+
+## Upload it to shinyapps.io
+
+![](images/shinyappsio.png)
+
+---
+
+## Distribute your app
+
+.pull-left[
+1. Create a free account at https://www.shinyapps.io/.
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+2. Build your Shiny app.
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+3. Publish your app.
+&lt;br/&gt;&lt;br/&gt;
+![](images/publish_app.png)
+]
+
+.pull-right[
+What you get with a free account:
+
+- 5 active applications
+
+- 25 hours per month of active use
+
+]
+
+---
+
+## References
+
+1. Shiny. (2020). https://shiny.rstudio.com/.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

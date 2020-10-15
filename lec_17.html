@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>R Shiny Part II</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# R Shiny Part II
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- Shiny [reactivity](https://shiny.rstudio.com/articles/#reactivity)
+- Shiny [code quality](https://shiny.rstudio.com/articles/#code-quality)
+
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## What is Shiny?
+
+.pull-left[
+- Shiny is an R package.
+&lt;br/&gt;&lt;br/&gt;
+- Build web-based apps with R in RStudio.
+&lt;br/&gt;&lt;br/&gt;
+- Shiny can incorporate CSS themes and JavaScript actions.
+
+]
+
+.pull-right[
+![](images/shinylogo.png)
+]
+
+---
+
+## How does Shiny work?
+
+![](images/server1.png)
+
+---
+
+## How does Shiny work?
+
+![](images/server2.png)
+
+---
+
+## How does Shiny work?
+
+![](images/server3.png)
+
+---
+
+## Main components of Rshiny
+
+.pull-left[
+
+
+```r
+ # Load package shiny
+library(shiny)
+# Define UI for application
+ui &lt;- fluidPage(
+  
+  
+)
+
+# Define server logic
+server &lt;- function(input, output) {
+  
+  
+}
+
+# Build and run the application
+shinyApp(ui = ui, server = server)
+```
+
+]
+
+.pull-right[
+- Function `fluidPage()` creates a dynamic HTML user interface you see when you 
+  look at an RShiny app. Convention is to save this as an object named `ui`.
+  
+- Function `server()` is user-defined and contains R commands your computer 
+  or external server need to run the app.
+  
+- Function `shinyApp()` builds the app based on the user interface and 
+  server pair of code.
+]
+
+---
+
+## User interface review
+
+- Build the user interface inside function `fluidPage()` and save it 
+  as an object named `ui`.
+
+- Function `fluidPage()` scales its components in real-time to fill all 
+  available browser width - dynamic HTML user interface.
+
+- Build inputs with `*Input(inputId, label, ...)`.
+
+- Build outputs with `*Output(outputId, ...)`.
+
+- Separate multiple inputs and outputs with commas.
+
+- Run your app after each added input or output to minimize complications
+  later on.
+
+---
+
+## Function `server()` review
+
+- The server function does the work in terms of building and rebuilding R 
+  objects.
+
+- Save output you build to `output$&lt;outputId&gt;`.
+
+- Build output with a `render*()` function.
+
+- Access inputs with `input$&lt;inputId&gt;`.
+
+- Multiple outputs can be placed in the server function.
+
+- Reactivity happens automatically when you use inputs to build rendered
+  outputs.
+
+---
+
+class: inverse, center, middle
+
+# UI Layouts
+
+---
+  
+## Layouts
+
+- Use layout functions to position elements in your app.
+
+&lt;br/&gt;
+
+- Use panels to group elements into a single unit for aesthetic or
+functional purposes.
+
+&lt;br/&gt;
+
+- Design your own layout or use a packaged layout.
+
+---
+
+## Rows with `fluidRow()`
+
+
+```r
+ui &lt;- fluidPage(
+  
+  fluidRow(
+    
+    # add inputs/outputs to row 1
+    
+  ),
+  
+  fluidRow(
+    
+    # add inputs/outputs to row 2
+    
+  ),
+  
+  fluidRow(
+    
+    # add inputs/outputs to row 3
+    
+  )
+)
+```
+
+
+---
+
+## Rows and columns
+
+
+```r
+ui &lt;- fluidPage(
+  
+  fluidRow(
+    column(width = 5,
+      # add inputs/outputs
+      # column width 5
+    ),
+    column(width = 7,
+      # add inputs/outputs
+      # column width 7
+    )
+  ),
+  
+  fluidRow(
+    column(width = 8, offset = 2,
+      # add inputs/outputs
+      # 2 units in from left
+    )
+  )
+)
+```
+
+---
+
+## Rows and columns example
+
+.small[
+
+```r
+ui &lt;- fluidPage(
+  
+  fluidRow(
+    column(width = 5,
+      passwordInput(inputId = "pass",
+                    label = "Enter password:"),
+      actionButton(inputId = "passbtn",
+                   label = "Submit password")
+    ),
+
+    column(width = 7,
+      paste("Add some description in row 1",
+            "of the column with a width of 7",
+            "here...", sep = " ")
+    )
+  ),
+  
+  fluidRow(
+    column(width = 8, offset = 2,
+      checkboxGroupInput(inputId = "checks",
+                         label = "",
+                         choices = c("Choice 1", 
+                                     "Choice 2",
+                                     "Choice 3", 
+                                     "Choice 4")),
+      "Add some more text in Row 2 here..."
+    )
+  )
+)
+```
+]
+
+---
+
+## Panels
+
+![](images/panels.png)
+
+---
+
+## Packaged layout: `sidebarLayout()`
+
+.pull-left[
+
+.tiny[
+
+```r
+ui &lt;- fluidPage(
+  
+  # give a title in quotes
+  titlePanel(), 
+  
+  sidebarLayout(
+    
+    sidebarPanel(
+      
+      # inputs/outputs
+       
+    ),
+    
+    mainPanel(
+
+      # inputs/outputs
+      
+    )
+  )
+)
+```
+]
+
+]
+
+.pull-right[
+
+![](images/sidebarlayout.png)
+
+]
+
+---
+
+## Packaged layout: `navbarPage()`
+
+.pull-left[
+
+.tiny[
+
+```r
+ui &lt;- fluidPage(
+  
+  navbarPage(title = "Navigation Bar Layout",
+             
+    tabPanel("Tab 1",
+             # add inputs/outputs
+             ),
+    
+    tabPanel("Tab 2",
+             # add inputs/outputs
+             ),
+    
+    tabPanel("Tab 3",
+             # add inputs/outputs
+            ),
+    
+    tabPanel("Tab 4",
+             # add inputs/outputs
+            )
+             
+  )
+)
+```
+]
+
+]
+
+.pull-right[
+
+![](images/navbar1.png)
+
+]
+
+---
+
+## Packaged layout: `navbarPage()`
+
+.pull-left[
+
+.tiny[
+
+```r
+ui &lt;- fluidPage(
+  
+  navbarPage(title = "Navigation Bar Layout",
+             
+    tabPanel("Tab 1",
+             # add inputs/outputs
+             ),
+    
+    tabPanel("Tab 2",
+             # add inputs/outputs
+             ),
+    
+    tabPanel("Tab 3",
+             # add inputs/outputs
+            ),
+    
+    tabPanel("Tab 4",
+             # add inputs/outputs
+            )
+             
+  )
+)
+```
+]
+
+]
+
+.pull-right[
+
+![](images/navbar2.png)
+
+]
+
+---
+
+## Layout recap
+
+- Use `fluidRow()` to arrange elements in rows; use columns() to 
+  arrange elements in columns, where total width is 12
+  
+- Use `sidebarPanel()` and `mainPanel()` to partition app with the packaged
+  layout function sidebarLayout()
+  
+- Use `tabPanel()` with packaged layouts `navbarPage()` or `navbarMenu()`.
+
+---
+
+class: inverse, center, middle
+
+# Reactivity
+
+---
+
+## Frequency of code execution
+
+- Shiny will run the whole script the first time your app is launched.
+
+- Each time a new user visits your app, Shiny runs the server function 
+  again, one time.
+
+- As users interact with widgets, Shiny will re-run the corresponding R
+  expressions that depend on a widget whose value was changed.
+
+---
+
+## Consider the simple app
+
+.pull-left[
+.tiny[
+
+```r
+library(shiny)
+library(tidyverse)
+
+# Build UI
+ui &lt;- fluidPage(
+  textInput(inputId = "title", 
+            label = "Enter a title"),
+  
+  numericInput(inputId = "num",
+               label = "Number of variables",
+               value = 100,
+               min = 1),
+  
+  plotOutput(outputId = "hist")
+)
+
+# Define server function
+server &lt;- function(input, output) { 
+
+  output$hist &lt;- renderPlot({
+    ggplot(as_tibble(rexp(input$num)), 
+           aes(x = value)) +
+      geom_histogram(bins = 10) +
+      labs(title = input$title)
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+```
+]
+]
+
+.pull-right[
+![](images/appbuild3.png)
+]
+
+---
+
+## Is there a problem?
+
+.pull-left[
+.tiny[
+
+```r
+library(shiny)
+library(tidyverse)
+
+# Build UI
+ui &lt;- fluidPage(
+  textInput(inputId = "title", 
+            label = "Enter a title"),
+  
+  numericInput(inputId = "num",
+               label = "Number of variables",
+               value = 100,
+               min = 1),
+  
+  plotOutput(outputId = "hist")
+)
+
+# Define server function
+server &lt;- function(input, output) { 
+
+  output$hist &lt;- renderPlot({
+    ggplot(as_tibble(rexp(input$num)), 
+           aes(x = value)) +
+      geom_histogram(bins = 10) +
+      labs(title = input$title)
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+```
+]
+]
+
+.pull-right[
+
+- Every time you change the title, `labs(title = input$title)` new random
+  numbers will be generated. If a single input changes in a block of code 
+  inside a render function, then the entire block of code is re-run.
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+- This is very inefficient and can cause problems.
+
+]
+
+---
+
+## Attempted solution
+
+.pull-left[
+.tiny[
+
+```r
+library(shiny)
+library(tidyverse)
+
+# Build UI
+ui &lt;- fluidPage(
+  textInput(inputId = "title", 
+            label = "Enter a title"),
+  
+  numericInput(inputId = "num",
+               label = "Number of variables",
+               value = 100,
+               min = 1),
+  
+  plotOutput(outputId = "hist")
+)
+
+# Define server function
+server &lt;- function(input, output) { 
+  
+  data &lt;- rexp(input$num)
+
+  output$hist &lt;- renderPlot({
+    ggplot(as_tibble(data), 
+           aes(x = value)) +
+      geom_histogram(bins = 10) +
+      labs(title = input$title)
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+```
+]
+]
+
+.pull-right[
+
+```r
+Error in .getReactiveEnvironment()$currentContext(): 
+Operation not allowed without
+an active reactive context.
+
+(You tried to do something that can
+only be done from inside a reactive 
+expression or observer.)
+```
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+- Reactive inputs must be in a reactive-type function.
+
+]
+
+---
+
+## Reactive expressions
+
+The render functions are reactive-type functions. Function `reactive()` 
+builds a reactive object. The object will respond to every 
+reactive source in the code.
+
+Rather than
+
+
+```r
+data &lt;- rexp(input$num)
+```
+
+use
+
+
+```r
+data &lt;- reactive({rexp(input$num)})
+```
+
+&lt;br/&gt;
+
+--
+
+A reactive expression has two special properties:
+
+1. call a reactive expression like a function, `data()`;
+
+2. reactive expressions cache their values, the value is retained until 
+   it becomes invalidated.
+
+
+---
+
+## Solution
+
+.tiny[
+
+```r
+library(shiny)
+library(tidyverse)
+
+# Build UI
+ui &lt;- fluidPage(
+  textInput(inputId = "title", 
+            label = "Enter a title"),
+  
+  numericInput(inputId = "num",
+               label = "Number of variables",
+               value = 100,
+               min = 1),
+  
+  plotOutput(outputId = "hist")
+)
+
+# Define server function
+server &lt;- function(input, output) { 
+  
+  data &lt;- reative({rexp(input$num)})
+
+  output$hist &lt;- renderPlot({
+    ggplot(as_tibble(data()), 
+           aes(x = value)) +
+      geom_histogram(bins = 10) +
+      labs(title = input$title)
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+```
+]
+
+---
+
+## Complementary functions for reactivity
+
+&lt;br/&gt;&lt;br/&gt;
+
+|          Function | Purpose                                |
+|------------------:|:---------------------------------------|
+|       `isolate()` | prevent reactions                      |
+|  `observeEvent()` | trigger code, useful for action button |
+|       `observe()` | similar to `observeEvent()`            |
+| `eventReactive()` | delay reactions                        |
+
+---
+
+
+class: inverse, center, middle
+
+# Dynamic UI
+
+---
+
+## Dynamic interface
+
+Shiny offers four main approaches to build a dynamic UI:
+
+1. Function `conditionalPanel()`: wraps UI elements, does require very 
+   very minimal JavaScript knowledge
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+2. Function `renderUI()`: use in `server()` in conjunction with the 
+   `uiOutput()` function in `ui`, lets you generate calls to UI functions 
+   and make the results appear in a predetermined place in the UI.
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+3. Functions `insertUI()` and `removeUI()`: allow you to add or remove pieces
+   of UI code
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+4. Use JavaScript directly
+
+---
+
+## References
+
+1. Shiny. (2020). https://shiny.rstudio.com/.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Databases and SQL</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Databases and SQL
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- Introduction to `dbplyr` [vignette](https://cran.r-project.org/web/packages/dbplyr/vignettes/dbplyr.html)
+
+---
+
+## Databases
+
+A **database** is a collection of data typically stored in a computer system. 
+It is controlled by a **database management system (DBMS)**. There may be 
+applications associated with them, such as an API.
+
+&lt;br/&gt;
+
+--
+
+Types of DBMS: MySQL, Microsoft Access, Microsoft SQL Server, FileMaker Pro, 
+Oracle Database, and dBASE.
+
+&lt;br/&gt;
+
+Types of databases: Relational, object-oriented, distributed, NoSQL, graph,
+and more.
+
+---
+
+## DBMS benefits
+
+- Lower storage and retrieval costs
+
+&lt;br/&gt;
+
+- Easy data access
+
+&lt;br/&gt;
+
+- Backup and recovery
+
+&lt;br/&gt;
+
+- Data consistency
+
+
+---
+
+## Relational database management system
+
+- A system that governs a relational database, where data is identified and
+  accessed in relation to other data in the database.
+
+&lt;br/&gt;&lt;br/&gt;
+
+- Relational databases generally organize data into tables comprised of 
+  **fields** and **records**.
+
+--
+
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+
+- Many relational database management systems (RDBMS) use SQL to access data.
+  More on SQL in the next slide.
+
+---
+
+
+## SQL
+
+- SQL stands for Structured Query Language.
+
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+
+--
+
+- It is an American National Standards Institute standard computer language 
+  for accessing and manipulating RDBMS.
+  
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+  
+--
+
+- There are different versions of SQL, but to be compliant with the
+  American National Standards Institute the version must support the key query
+  verbs (functions).
+
+---
+
+## Big picture
+
+&lt;center&gt;
+&lt;img src="images/sql_big_picture.gif"&gt;
+&lt;/center&gt;
+
+&lt;br/&gt;
+
+*Source*: https://www.w3resource.com/sql/tutorials.php
+
+---
+
+class: inverse, center, middle
+
+# Translation to SQL
+
+---
+
+## Package `dbplyr`
+
+Package `dbplyr` allows you to query a database by automatically generating
+SQL queries. We'll use it as a starting point to see the connection between 
+`dplyr` verbs (functions) and `SQL` verbs before we transition using
+SQL.
+
+--
+
+To get started, load the packages.
+
+
+```r
+library(dplyr)
+library(dbplyr)
+```
+
+We'll use data from `nycflights13::airports` to create a table in a temporary
+in-memory database.
+
+---
+
+## Creating an in-memory database
+
+We'll create an in-memory SQLite database and copy the airports tibble as a 
+table into the database.
+
+
+```r
+con &lt;- DBI::dbConnect(RSQLite::SQLite(), dbname = ":memory:")
+```
+
+
+```r
+copy_to(con, df = nycflights13::airports, name = "airports")
+db_list_tables(con)
+```
+
+```
+#&gt; [1] "airports"     "sqlite_stat1" "sqlite_stat4"
+```
+
+--
+
+&lt;br/&gt;
+
+Retrieve a single table from our in-memory database.
+
+
+```r
+airports_db &lt;- tbl(con, "airports")
+```
+
+---
+
+.small[
+
+```r
+airports_db
+```
+
+```
+#&gt; # Source:   table&lt;airports&gt; [?? x 8]
+#&gt; # Database: sqlite 3.33.0 [:memory:]
+#&gt;    faa   name                       lat    lon   alt    tz dst   tzone          
+#&gt;    &lt;chr&gt; &lt;chr&gt;                    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;          
+#&gt;  1 04G   Lansdowne Airport         41.1  -80.6  1044    -5 A     America/New_Yo…
+#&gt;  2 06A   Moton Field Municipal A…  32.5  -85.7   264    -6 A     America/Chicago
+#&gt;  3 06C   Schaumburg Regional       42.0  -88.1   801    -6 A     America/Chicago
+#&gt;  4 06N   Randall Airport           41.4  -74.4   523    -5 A     America/New_Yo…
+#&gt;  5 09J   Jekyll Island Airport     31.1  -81.4    11    -5 A     America/New_Yo…
+#&gt;  6 0A9   Elizabethton Municipal …  36.4  -82.2  1593    -5 A     America/New_Yo…
+#&gt;  7 0G6   Williams County Airport   41.5  -84.5   730    -5 A     America/New_Yo…
+#&gt;  8 0G7   Finger Lakes Regional A…  42.9  -76.8   492    -5 A     America/New_Yo…
+#&gt;  9 0P2   Shoestring Aviation Air…  39.8  -76.6  1000    -5 U     America/New_Yo…
+#&gt; 10 0S9   Jefferson County Intl     48.1 -123.    108    -8 A     America/Los_An…
+#&gt; # … with more rows
+```
+]
+
+&lt;br/&gt;&lt;br/&gt;
+
+--
+
+**What is different when compared to a tibble object?**
+
+---
+
+## Example
+
+NYC flights to airports by time zone.
+
+
+```r
+airport_timezone &lt;- airports_db %&gt;% 
+  group_by(tzone) %&gt;% 
+  summarise(count = n())
+```
+
+--
+
+
+```r
+airport_timezone
+```
+
+```
+#&gt; # Source:   lazy query [?? x 2]
+#&gt; # Database: sqlite 3.33.0 [:memory:]
+#&gt;    tzone               count
+#&gt;    &lt;chr&gt;               &lt;int&gt;
+#&gt;  1 &lt;NA&gt;                    3
+#&gt;  2 America/Anchorage     239
+#&gt;  3 America/Chicago       342
+#&gt;  4 America/Denver        119
+#&gt;  5 America/Los_Angeles   176
+#&gt;  6 America/New_York      519
+#&gt;  7 America/Phoenix        38
+#&gt;  8 America/Vancouver       2
+#&gt;  9 Asia/Chongqing          2
+#&gt; 10 Pacific/Honolulu       18
+```
+
+---
+
+## Translation to SQL
+
+.pull-left[
+
+
+```r
+airport_timezone %&gt;% 
+  show_query()
+```
+
+```
+#&gt; &lt;SQL&gt;
+#&gt; SELECT `tzone`, COUNT() AS `count`
+#&gt; FROM `airports`
+#&gt; GROUP BY `tzone`
+```
+
+]
+
+.pull-right[
+
+
+```r
+airports_db %&gt;% 
+  group_by(tzone) %&gt;% 
+  summarise(count = n())
+```
+
+```
+#&gt; # Source:   lazy query [?? x 2]
+#&gt; # Database: sqlite 3.33.0 [:memory:]
+#&gt;    tzone               count
+#&gt;    &lt;chr&gt;               &lt;int&gt;
+#&gt;  1 &lt;NA&gt;                    3
+#&gt;  2 America/Anchorage     239
+#&gt;  3 America/Chicago       342
+#&gt;  4 America/Denver        119
+#&gt;  5 America/Los_Angeles   176
+#&gt;  6 America/New_York      519
+#&gt;  7 America/Phoenix        38
+#&gt;  8 America/Vancouver       2
+#&gt;  9 Asia/Chongqing          2
+#&gt; 10 Pacific/Honolulu       18
+```
+
+]
+
+--
+
+What are the `dplyr` translations to SQL?
+
+---
+
+## Exercise
+
+What are the corresponding SQL verbs based on the `dplyr` structure below?
+
+
+```r
+airports_db %&gt;% 
+  filter(lat &gt;= 33.7666, lat &lt;= 36.588, 
+         lon &gt;= -84.3201, lon &lt;= -75.4129) %&gt;% 
+  arrange(desc(alt)) %&gt;% 
+  select(name, alt)
+```
+
+???
+
+## Solution
+
+.solution[
+
+```r
+airports_db %&gt;% 
+  filter(lat &gt;=  33.7666, lat &lt;=  36.588, 
+         lon &gt;= -84.3201, lon &lt;= -75.4129) %&gt;% 
+  arrange(desc(alt)) %&gt;% 
+  select(name, alt) %&gt;% 
+  show_query()
+```
+
+```
+#&gt; &lt;SQL&gt;
+#&gt; SELECT `name`, `alt`
+#&gt; FROM (SELECT *
+#&gt; FROM (SELECT *
+#&gt; FROM `airports`
+#&gt; WHERE ((`lat` &gt;= 33.7666) AND (`lat` &lt;= 36.588) AND (`lon` &gt;= -84.3201) AND (`lon` &lt;= -75.4129)))
+#&gt; ORDER BY `alt` DESC)
+```
+]
+
+---
+
+## Limitations
+
+
+```r
+tail(airport_car)
+
+Error: tail() is not supported by sql sources
+```
+
+--
+
+
+```r
+airports_db %&gt;% 
+  filter(lat &gt;=  33.7666, lat &lt;=  36.588, 
+         lon &gt;= -84.3201, lon &lt;= -75.4129) %&gt;% 
+  arrange(desc(alt)) %&gt;% 
+  select(name, alt) %&gt;% 
+  slice(1:3)
+
+Error in UseMethod("slice_") : 
+  no applicable method for 'slice_' applied to an object of class 
+  "c('tbl_SQLiteConnection', 'tbl_dbi', 'tbl_sql', 'tbl_lazy', 'tbl')"
+```
+
+--
+
+
+```r
+airports_db %&gt;% 
+  filter(lat &gt;= 33.7666, lat &lt;= 36.588, lon &gt;= -84.3201, lon &lt;= -75.4129) %&gt;% 
+  select(name, alt) %&gt;% 
+  filter(stringr::str_detect(name, pattern="Raleigh"))
+
+Error in stri_detect_regex(string, pattern, negate = negate, opts_regex = opts(pattern)) : 
+  object 'name' not found
+```
+
+---
+
+## Lazy remote queries
+
+
+```r
+airport_car &lt;- airports_db %&gt;% 
+  filter(lat &gt;=  33.7666, lat &lt;=  36.588, 
+         lon &gt;= -84.3201, lon &lt;= -75.4129) %&gt;% 
+  arrange(desc(alt)) %&gt;% 
+  select(name, alt) %&gt;% 
+* collect()
+```
+
+- Data is never pulled into R unless you explicitly ask for it with
+  `collect()`.
+  
+- Work is delayed until the moment it is required. Until I ask for
+  `airport_car`, nothing is communicated to the database.
+  
+---
+
+## Close connection
+
+
+```r
+DBI::dbDisconnect(con)
+```
+
+---
+
+class: inverse, center, middle
+
+# SQL and R
+
+---
+
+## Create a database
+
+Set up a relational database management system and include some baseball data
+from package `Lahman`.
+
+
+```r
+library(RSQLite)
+library(DBI)
+library(Lahman)
+```
+
+
+```r
+con &lt;- dbConnect(RSQLite::SQLite(), ":memory:")
+dbWriteTable(con, name = "batting", value = Batting)
+dbWriteTable(con, name = "pitching", value = Pitching)
+dbWriteTable(con, name = "teams", value = Teams)
+```
+
+---
+
+## Seeing tables and fields
+
+
+```r
+dbListTables(con)
+```
+
+```
+#&gt; [1] "batting"  "pitching" "teams"
+```
+
+--
+
+
+```r
+dbListFields(con, name = "teams") %&gt;% head()
+```
+
+```
+#&gt; [1] "yearID"   "lgID"     "teamID"   "franchID" "divID"    "Rank"
+```
+
+--
+
+
+```r
+dbListFields(con, name = "pitching")
+```
+
+```
+#&gt;  [1] "playerID" "yearID"   "stint"    "teamID"   "lgID"     "W"       
+#&gt;  [7] "L"        "G"        "GS"       "CG"       "SHO"      "SV"      
+#&gt; [13] "IPouts"   "H"        "ER"       "HR"       "BB"       "SO"      
+#&gt; [19] "BAOpp"    "ERA"      "IBB"      "WP"       "HBP"      "BK"      
+#&gt; [25] "BFP"      "GF"       "R"        "SH"       "SF"       "GIDP"
+```
+
+---
+
+## Common SQL query structure
+
+Main verbs to query data tables:
+
+```sql
+SELECT columns or computations
+  FROM table
+  WHERE condition
+  GROUP BY columns
+  HAVING condition
+  ORDER BY column [ASC | DESC]
+  LIMIT offset, count
+```
+`WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT` are all optional. Primary
+computations: `MIN`, `MAX`, `COUNT`, `SUM`, `AVG`.
+
+&lt;br/&gt;&lt;br/&gt;
+
+We can perform these queries with `dbGetQuery()` and `paste()`.
+
+---
+
+## Verb connections
+
+|    SQL   |                 `dplyr`                 |
+|---------:|:----------------------------------------|
+|   SELECT | `select()`                              |
+|    FROM  | Pipe in data frame                      |
+|    WHERE | `filter()` pre-aggregation/calculation  |
+| GROUP_BY | `group_by()`                            |
+|   HAVING | `filter()` post-aggregation/calculation |
+| ORDER BY | `arrange()` with possibly a `desc()`    |
+|    LIMIT | `slice(1:n)`                            |
+
+---
+
+## Examples
+
+Pull some attendance numbers
+
+
+```r
+dbGetQuery(con, paste("SELECT yearID, franchID, attendance",
+                      "FROM teams",
+                      "LIMIT 5"))
+```
+
+```
+#&gt;   yearID franchID attendance
+#&gt; 1   1871      BNA         NA
+#&gt; 2   1871      CNA         NA
+#&gt; 3   1871      CFC         NA
+#&gt; 4   1871      KEK         NA
+#&gt; 5   1871      NNA         NA
+```
+
+--
+
+
+```r
+dbGetQuery(con, paste("SELECT yearID, franchID, attendance",
+                      "FROM teams",
+                      "WHERE yearID &gt;= 2000",
+                      "LIMIT 5"))
+```
+
+```
+#&gt;   yearID franchID attendance
+#&gt; 1   2000      ANA    2066982
+#&gt; 2   2000      ARI    2942251
+#&gt; 3   2000      ATL    3234304
+#&gt; 4   2000      BAL    3297031
+#&gt; 5   2000      BOS    2585895
+```
+
+---
+
+What happens if we change the order or query structure?
+
+--
+
+&lt;br/&gt;&lt;br/&gt;
+
+
+```r
+*dbGetQuery(con, paste("FROM teams",
+                      "SELECT yearID, franchID, attendance",
+                      "WHERE yearID &gt;= 2000",
+                      "LIMIT 5"))
+```
+
+```
+#&gt; Error: near "FROM": syntax error
+```
+
+---
+
+Get the average yearly attendance for each franchise since 2010 and show the 
+top 10.
+
+--
+
+
+```r
+dbGetQuery(con, paste("SELECT franchID, AVG(attendance)",
+                      "FROM teams",
+                      "WHERE yearID &gt;= 2010",
+                      "ORDER BY AVG(attendance) DESC",
+                      "LIMIT 10"))
+```
+
+&lt;br/&gt;
+
+--
+
+
+```
+#&gt;   franchID AVG(attendance)
+#&gt; 1      ARI         2422734
+```
+
+&lt;br/&gt;
+
+--
+
+**What went wrong?**
+
+---
+
+Get the average yearly attendance for each franchise since 2010 and show the 
+top 10.
+
+
+```r
+dbGetQuery(con, paste("SELECT franchID, AVG(attendance)",
+                      "FROM teams",
+                      "WHERE yearID &gt;= 2010",
+*                     "GROUP BY franchID",
+                      "ORDER BY AVG(attendance) DESC",
+                      "LIMIT 10"))
+```
+
+```
+#&gt;    franchID AVG(attendance)
+#&gt; 1       LAD         3641336
+#&gt; 2       STL         3386500
+#&gt; 3       NYY         3383453
+#&gt; 4       SFG         3240634
+#&gt; 5       ANA         3068207
+#&gt; 6       CHC         2988555
+#&gt; 7       BOS         2950688
+#&gt; 8       COL         2796172
+#&gt; 9       MIL         2726686
+#&gt; 10      PHI         2686706
+```
+
+--
+
+&lt;br/&gt;
+
+Note that we do not need `yearID` and `attendance` in our `SELECT` line. When
+do you think the `SELECT` clause is evaluated?
+
+---
+
+## SQL order of execution
+
+| Order | Verb       |
+|:-----:|:-----------|
+|   1   | `FROM`     |
+|   2   | `WHERE`    |
+|   3   | `GROUP BY` |
+|   4   | `HAVING`   |
+|   5   | `SELECT`   |
+|   6   | `ORDER BY` |
+|   7   | `LIMIT`    |
+
+
+&lt;br/&gt;
+
+How is this different from `dplyr`?
+
+---
+
+Which players had at least 300 strikeouts (SO) in a season between 
+1960 and 1990?
+
+--
+
+
+```r
+*dbGetQuery(con, paste("SELECT playerID, yearID, MAX(SO) as maxK",
+                      "FROM pitching",
+                      "WHERE yearID &gt;= 1960 AND yearID &lt;= 1990",
+                      "GROUP BY playerID, yearID",
+                      "HAVING maxK &gt; 300",
+                      "ORDER BY maxK DESC"))
+```
+
+```
+#&gt;     playerID yearID maxK
+#&gt; 1   ryanno01   1973  383
+#&gt; 2  koufasa01   1965  382
+#&gt; 3   ryanno01   1974  367
+#&gt; 4   ryanno01   1977  341
+#&gt; 5   ryanno01   1972  329
+#&gt; 6   ryanno01   1976  327
+#&gt; 7  mcdowsa01   1965  325
+#&gt; 8  koufasa01   1966  317
+#&gt; 9  richajr01   1979  313
+#&gt; 10 carltst01   1972  310
+#&gt; 11 lolicmi01   1971  308
+#&gt; 12 koufasa01   1963  306
+#&gt; 13 scottmi03   1986  306
+#&gt; 14 mcdowsa01   1970  304
+#&gt; 15 richajr01   1978  303
+#&gt; 16  bluevi01   1971  301
+#&gt; 17  ryanno01   1989  301
+```
+
+**Can we restructure the query?**
+
+---
+
+Which players had at least 300 strikeouts (SO) in a season between 
+1960 and 1990?
+
+
+
+```r
+dbGetQuery(con, paste("SELECT playerID, yearID, MAX(SO) as maxK",
+                      "FROM pitching",
+*                     "HAVING maxK &gt; 300",
+                      "GROUP BY playerID, yearID",
+*                     "WHERE yearID &gt;= 1960 AND yearID &lt;= 1990",
+                      "ORDER BY maxK DESC"))
+```
+
+```
+#&gt; Error: near "GROUP": syntax error
+```
+
+--
+
+&lt;br/&gt;&lt;br/&gt;
+
+
+```r
+dbGetQuery(con, paste("SELECT yearID, franchID, attendance",
+                      "FROM teams",
+*                     "HAVING yearID &gt;= 2000",
+                      "LIMIT 5"))
+```
+
+```
+#&gt; Error: a GROUP BY clause is required before HAVING
+```
+
+---
+
+## SQL arithmetic and comparison operators
+
+SQL supports the standard `+`, `-`, `*`, `/`, and `%` (modulo) arithmetic
+operators and the following comparison operators.
+
+&lt;br/&gt;
+
+| Operator |        Description       |
+|:--------:|:-------------------------|
+|     `=`  |         Equal to         |
+|     `&gt;`  |       Greater than       |
+|     `&lt;`  |         Less than        |
+|    `&gt;=`  | Greater than or equal to |
+|    `&lt;=`  |   Less than or equal to  |
+|    `&lt;&gt;`  |       Not equal to       |
+
+---
+
+## SQL logical operators
+
+| Operator  |                          Description                         |
+|----------:|:-------------------------------------------------------------|
+|     `ALL` | TRUE if all of the subquery values meet the condition        |
+|     `AND` | TRUE if all the conditions separated by AND is TRUE          |
+|     `ANY` | TRUE if any of the subquery values meet the condition        |
+| `BETWEEN` | TRUE if the operand is within the range of comparisons       |
+|  `EXISTS` | TRUE if the subquery returns one or more records             |
+|      `IN` | TRUE if the operand is equal to one of a list of expressions |
+|    `LIKE` | TRUE if the operand matches a pattern                        |
+|     `NOT` | Displays a record if the condition(s) is NOT TRUE            |
+|      `OR` | TRUE if any of the conditions separated by OR is TRUE        |
+|    `SOME` | TRUE if any of the subquery values meet the condition        |
+
+---
+
+## Exercises
+
+1. Add `Salaries` from package `Lahman` as a table to your in-memory database.
+
+2. Compute the team salaries for each team in 2016 and display the 5 teams with
+   the highest payroll. Which team had the lowest payroll in that year?
+   
+3. Who were the top 10 teams according to win percentage since 1990? *Hint*:
+   https://www.w3schools.com/sql/func_sqlserver_cast.asp
+   
+4. How would you combine the batting and salaries tables to match up the players
+   and years? Take a look at `?dplyr::join`. Try to combine the R data frame 
+   objects `Batting` and `Salaries`.
+
+???
+
+## Solutions
+
+.solution[
+
+```r
+dbWriteTable(con, "salaries", Salaries)
+
+dbGetQuery(con, paste("SELECT teamID, SUM(salary) as payroll",
+                      "FROM salaries",
+                      "WHERE yearID = 2016",
+                      "GROUP BY teamID",
+                      "ORDER BY payroll DESC",
+                      "LIMIT 5"))
+
+dbGetQuery(con, paste("SELECT yearID, teamID, W, L, CAST(W as FLOAT) / G as wpct", 
+                      "FROM teams",
+                      "WHERE yearID &gt;= 1990",
+                      "GROUP BY yearID, teamID",
+                      "ORDER BY wpct DESC",
+                      "LIMIT 10"))
+
+left_join(Batting, Salaries, by = c("playerID", "yearID")) %&gt;% 
+  glimpse()
+```
+]
+
+---
+
+## References
+
+1. Introduction to dbplyr. (2020).
+   https://cran.r-project.org/web/packages/dbplyr/vignettes/dbplyr.html
+
+2. SQL Tutorial - w3resource. (2020). 
+   https://www.w3resource.com/sql/tutorials.php.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -1,0 +1,652 @@
+---
+title: "Databases and SQL"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- Introduction to `dbplyr` [vignette](https://cran.r-project.org/web/packages/dbplyr/vignettes/dbplyr.html)
+
+---
+
+## Databases
+
+A **database** is a collection of data typically stored in a computer system. 
+It is controlled by a **database management system (DBMS)**. There may be 
+applications associated with them, such as an API.
+
+<br/>
+
+--
+
+Types of DBMS: MySQL, Microsoft Access, Microsoft SQL Server, FileMaker Pro, 
+Oracle Database, and dBASE.
+
+<br/>
+
+Types of databases: Relational, object-oriented, distributed, NoSQL, graph,
+and more.
+
+---
+
+## DBMS benefits
+
+- Lower storage and retrieval costs
+
+<br/>
+
+- Easy data access
+
+<br/>
+
+- Backup and recovery
+
+<br/>
+
+- Data consistency
+
+
+---
+
+## Relational database management system
+
+- A system that governs a relational database, where data is identified and
+  accessed in relation to other data in the database.
+
+<br/><br/>
+
+- Relational databases generally organize data into tables comprised of 
+  **fields** and **records**.
+
+--
+
+<br/><br/><br/><br/>
+
+- Many relational database management systems (RDBMS) use SQL to access data.
+  More on SQL in the next slide.
+
+---
+
+
+## SQL
+
+- SQL stands for Structured Query Language.
+
+<br/><br/><br/>
+
+--
+
+- It is an American National Standards Institute standard computer language 
+  for accessing and manipulating RDBMS.
+  
+<br/><br/><br/>
+  
+--
+
+- There are different versions of SQL, but to be compliant with the
+  American National Standards Institute the version must support the key query
+  verbs (functions).
+
+---
+
+## Big picture
+
+<center>
+<img src="images/sql_big_picture.gif">
+</center>
+
+<br/>
+
+*Source*: https://www.w3resource.com/sql/tutorials.php
+
+---
+
+class: inverse, center, middle
+
+# Translation to SQL
+
+---
+
+## Package `dbplyr`
+
+Package `dbplyr` allows you to query a database by automatically generating
+SQL queries. We'll use it as a starting point to see the connection between 
+`dplyr` verbs (functions) and `SQL` verbs before we transition using
+SQL.
+
+--
+
+To get started, load the packages.
+
+```{r}
+library(dplyr)
+library(dbplyr)
+```
+
+We'll use data from `nycflights13::airports` to create a table in a temporary
+in-memory database.
+
+---
+
+## Creating an in-memory database
+
+We'll create an in-memory SQLite database and copy the airports tibble as a 
+table into the database.
+
+```{r}
+con <- DBI::dbConnect(RSQLite::SQLite(), dbname = ":memory:")
+```
+
+```{r}
+copy_to(con, df = nycflights13::airports, name = "airports")
+db_list_tables(con)
+```
+
+--
+
+<br/>
+
+Retrieve a single table from our in-memory database.
+
+```{r}
+airports_db <- tbl(con, "airports")
+```
+
+---
+
+.small[
+```{r}
+airports_db
+```
+]
+
+<br/><br/>
+
+--
+
+**What is different when compared to a tibble object?**
+
+---
+
+## Example
+
+NYC flights to airports by time zone.
+
+```{r}
+airport_timezone <- airports_db %>% 
+  group_by(tzone) %>% 
+  summarise(count = n())
+```
+
+--
+
+```{r}
+airport_timezone
+```
+
+---
+
+## Translation to SQL
+
+.pull-left[
+
+```{r}
+airport_timezone %>% 
+  show_query()
+```
+
+]
+
+.pull-right[
+
+```{r eval=TRUE}
+airports_db %>% 
+  group_by(tzone) %>% 
+  summarise(count = n())
+```
+
+]
+
+--
+
+What are the `dplyr` translations to SQL?
+
+---
+
+## Exercise
+
+What are the corresponding SQL verbs based on the `dplyr` structure below?
+
+```{r eval=FALSE}
+airports_db %>% 
+  filter(lat >= 33.7666, lat <= 36.588, 
+         lon >= -84.3201, lon <= -75.4129) %>% 
+  arrange(desc(alt)) %>% 
+  select(name, alt)
+```
+
+???
+
+## Solution
+
+.solution[
+```{r}
+airports_db %>% 
+  filter(lat >=  33.7666, lat <=  36.588, 
+         lon >= -84.3201, lon <= -75.4129) %>% 
+  arrange(desc(alt)) %>% 
+  select(name, alt) %>% 
+  show_query()
+```
+]
+
+---
+
+## Limitations
+
+```{r eval=FALSE}
+tail(airport_car)
+
+Error: tail() is not supported by sql sources
+```
+
+--
+
+```{r eval=FALSE}
+airports_db %>% 
+  filter(lat >=  33.7666, lat <=  36.588, 
+         lon >= -84.3201, lon <= -75.4129) %>% 
+  arrange(desc(alt)) %>% 
+  select(name, alt) %>% 
+  slice(1:3)
+
+Error in UseMethod("slice_") : 
+  no applicable method for 'slice_' applied to an object of class 
+  "c('tbl_SQLiteConnection', 'tbl_dbi', 'tbl_sql', 'tbl_lazy', 'tbl')"
+```
+
+--
+
+```{r eval=FALSE}
+airports_db %>% 
+  filter(lat >= 33.7666, lat <= 36.588, lon >= -84.3201, lon <= -75.4129) %>% 
+  select(name, alt) %>% 
+  filter(stringr::str_detect(name, pattern="Raleigh"))
+
+Error in stri_detect_regex(string, pattern, negate = negate, opts_regex = opts(pattern)) : 
+  object 'name' not found
+```
+
+---
+
+## Lazy remote queries
+
+```{r results='hide'}
+airport_car <- airports_db %>% 
+  filter(lat >=  33.7666, lat <=  36.588, 
+         lon >= -84.3201, lon <= -75.4129) %>% 
+  arrange(desc(alt)) %>% 
+  select(name, alt) %>% 
+  collect() #<<
+```
+
+- Data is never pulled into R unless you explicitly ask for it with
+  `collect()`.
+  
+- Work is delayed until the moment it is required. Until I ask for
+  `airport_car`, nothing is communicated to the database.
+  
+---
+
+## Close connection
+
+```{r}
+DBI::dbDisconnect(con)
+```
+
+---
+
+class: inverse, center, middle
+
+# SQL and R
+
+---
+
+## Create a database
+
+Set up a relational database management system and include some baseball data
+from package `Lahman`.
+
+```{r}
+library(RSQLite)
+library(DBI)
+library(Lahman)
+```
+
+```{r}
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+dbWriteTable(con, name = "batting", value = Batting)
+dbWriteTable(con, name = "pitching", value = Pitching)
+dbWriteTable(con, name = "teams", value = Teams)
+```
+
+---
+
+## Seeing tables and fields
+
+```{r}
+dbListTables(con)
+```
+
+--
+
+```{r}
+dbListFields(con, name = "teams") %>% head()
+```
+
+--
+
+```{r}
+dbListFields(con, name = "pitching")
+```
+
+---
+
+## Common SQL query structure
+
+Main verbs to query data tables:
+
+```sql
+SELECT columns or computations
+  FROM table
+  WHERE condition
+  GROUP BY columns
+  HAVING condition
+  ORDER BY column [ASC | DESC]
+  LIMIT offset, count
+```
+`WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT` are all optional. Primary
+computations: `MIN`, `MAX`, `COUNT`, `SUM`, `AVG`.
+
+<br/><br/>
+
+We can perform these queries with `dbGetQuery()` and `paste()`.
+
+---
+
+## Verb connections
+
+|    SQL   |                 `dplyr`                 |
+|---------:|:----------------------------------------|
+|   SELECT | `select()`                              |
+|    FROM  | Pipe in data frame                      |
+|    WHERE | `filter()` pre-aggregation/calculation  |
+| GROUP_BY | `group_by()`                            |
+|   HAVING | `filter()` post-aggregation/calculation |
+| ORDER BY | `arrange()` with possibly a `desc()`    |
+|    LIMIT | `slice(1:n)`                            |
+
+---
+
+## Examples
+
+Pull some attendance numbers
+
+```{r}
+dbGetQuery(con, paste("SELECT yearID, franchID, attendance",
+                      "FROM teams",
+                      "LIMIT 5"))
+```
+
+--
+
+```{r}
+dbGetQuery(con, paste("SELECT yearID, franchID, attendance",
+                      "FROM teams",
+                      "WHERE yearID >= 2000",
+                      "LIMIT 5"))
+```
+
+---
+
+What happens if we change the order or query structure?
+
+--
+
+<br/><br/>
+
+```{r error=TRUE}
+dbGetQuery(con, paste("FROM teams", #<<
+                      "SELECT yearID, franchID, attendance",
+                      "WHERE yearID >= 2000",
+                      "LIMIT 5"))
+```
+
+---
+
+Get the average yearly attendance for each franchise since 2010 and show the 
+top 10.
+
+--
+
+```{r eval=FALSE}
+dbGetQuery(con, paste("SELECT franchID, AVG(attendance)",
+                      "FROM teams",
+                      "WHERE yearID >= 2010",
+                      "ORDER BY AVG(attendance) DESC",
+                      "LIMIT 10"))
+```
+
+<br/>
+
+--
+
+```{r echo=FALSE}
+dbGetQuery(con, paste("SELECT franchID, AVG(attendance)",
+                      "FROM teams",
+                      "WHERE yearID >= 2010",
+                      "ORDER BY AVG(attendance) DESC",
+                      "LIMIT 10"))
+```
+
+<br/>
+
+--
+
+**What went wrong?**
+
+---
+
+Get the average yearly attendance for each franchise since 2010 and show the 
+top 10.
+
+```{r}
+dbGetQuery(con, paste("SELECT franchID, AVG(attendance)",
+                      "FROM teams",
+                      "WHERE yearID >= 2010",
+                      "GROUP BY franchID", #<<
+                      "ORDER BY AVG(attendance) DESC",
+                      "LIMIT 10"))
+```
+
+--
+
+<br/>
+
+Note that we do not need `yearID` and `attendance` in our `SELECT` line. When
+do you think the `SELECT` clause is evaluated?
+
+---
+
+## SQL order of execution
+
+| Order | Verb       |
+|:-----:|:-----------|
+|   1   | `FROM`     |
+|   2   | `WHERE`    |
+|   3   | `GROUP BY` |
+|   4   | `HAVING`   |
+|   5   | `SELECT`   |
+|   6   | `ORDER BY` |
+|   7   | `LIMIT`    |
+
+
+<br/>
+
+How is this different from `dplyr`?
+
+---
+
+Which players had at least 300 strikeouts (SO) in a season between 
+1960 and 1990?
+
+--
+
+```{r}
+dbGetQuery(con, paste("SELECT playerID, yearID, MAX(SO) as maxK", #<<
+                      "FROM pitching",
+                      "WHERE yearID >= 1960 AND yearID <= 1990",
+                      "GROUP BY playerID, yearID",
+                      "HAVING maxK > 300",
+                      "ORDER BY maxK DESC"))
+```
+
+**Can we restructure the query?**
+
+---
+
+Which players had at least 300 strikeouts (SO) in a season between 
+1960 and 1990?
+
+
+```{r error=TRUE}
+dbGetQuery(con, paste("SELECT playerID, yearID, MAX(SO) as maxK",
+                      "FROM pitching",
+                      "HAVING maxK > 300", #<<
+                      "GROUP BY playerID, yearID",
+                      "WHERE yearID >= 1960 AND yearID <= 1990", #<<
+                      "ORDER BY maxK DESC"))
+```
+
+--
+
+<br/><br/>
+
+```{r error=TRUE}
+dbGetQuery(con, paste("SELECT yearID, franchID, attendance",
+                      "FROM teams",
+                      "HAVING yearID >= 2000", #<<
+                      "LIMIT 5"))
+```
+
+---
+
+## SQL arithmetic and comparison operators
+
+SQL supports the standard `+`, `-`, `*`, `/`, and `%` (modulo) arithmetic
+operators and the following comparison operators.
+
+<br/>
+
+| Operator |        Description       |
+|:--------:|:-------------------------|
+|     `=`  |         Equal to         |
+|     `>`  |       Greater than       |
+|     `<`  |         Less than        |
+|    `>=`  | Greater than or equal to |
+|    `<=`  |   Less than or equal to  |
+|    `<>`  |       Not equal to       |
+
+---
+
+## SQL logical operators
+
+| Operator  |                          Description                         |
+|----------:|:-------------------------------------------------------------|
+|     `ALL` | TRUE if all of the subquery values meet the condition        |
+|     `AND` | TRUE if all the conditions separated by AND is TRUE          |
+|     `ANY` | TRUE if any of the subquery values meet the condition        |
+| `BETWEEN` | TRUE if the operand is within the range of comparisons       |
+|  `EXISTS` | TRUE if the subquery returns one or more records             |
+|      `IN` | TRUE if the operand is equal to one of a list of expressions |
+|    `LIKE` | TRUE if the operand matches a pattern                        |
+|     `NOT` | Displays a record if the condition(s) is NOT TRUE            |
+|      `OR` | TRUE if any of the conditions separated by OR is TRUE        |
+|    `SOME` | TRUE if any of the subquery values meet the condition        |
+
+---
+
+## Exercises
+
+1. Add `Salaries` from package `Lahman` as a table to your in-memory database.
+
+2. Compute the team salaries for each team in 2016 and display the 5 teams with
+   the highest payroll. Which team had the lowest payroll in that year?
+   
+3. Who were the top 10 teams according to win percentage since 1990? *Hint*:
+   https://www.w3schools.com/sql/func_sqlserver_cast.asp
+   
+4. How would you combine the batting and salaries tables to match up the players
+   and years? Take a look at `?dplyr::join`. Try to combine the R data frame 
+   objects `Batting` and `Salaries`.
+
+???
+
+## Solutions
+
+.solution[
+```{r eval=FALSE}
+dbWriteTable(con, "salaries", Salaries)
+
+dbGetQuery(con, paste("SELECT teamID, SUM(salary) as payroll",
+                      "FROM salaries",
+                      "WHERE yearID = 2016",
+                      "GROUP BY teamID",
+                      "ORDER BY payroll DESC",
+                      "LIMIT 5"))
+
+dbGetQuery(con, paste("SELECT yearID, teamID, W, L, CAST(W as FLOAT) / G as wpct", 
+                      "FROM teams",
+                      "WHERE yearID >= 1990",
+                      "GROUP BY yearID, teamID",
+                      "ORDER BY wpct DESC",
+                      "LIMIT 10"))
+
+left_join(Batting, Salaries, by = c("playerID", "yearID")) %>% 
+  glimpse()
+```
+]
+
+---
+
+## References
+
+1. Introduction to dbplyr. (2020).
+   https://cran.r-project.org/web/packages/dbplyr/vignettes/dbplyr.html
+
+2. SQL Tutorial - w3resource. (2020). 
+   https://www.w3resource.com/sql/tutorials.php.
+
