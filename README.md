@@ -20,9 +20,9 @@ images and the CSS file for reproducibility.
 | Week 7  | Wed, Sep 30 | Web scraping part II                   |  :white_check_mark:     |
 |         | Fri, Oct 02 | Web APIs                               |  :white_check_mark:     |
 | Week 8  | Wed, Oct 07 | make                                   |  :white_check_mark:     |
-|         | Fri, Oct 09 | Shiny part I                           |                         |
-| Week 9  | Wed, Oct 14 | Shiny part II                          |                         |
-|         | Fri, Oct 16 | Databases and SQL                      |                         |
+|         | Fri, Oct 09 | Shiny part I                           |  :white_check_mark:     |
+| Week 9  | Wed, Oct 14 | Shiny part II                          |  :white_check_mark:     |
+|         | Fri, Oct 16 | Databases and SQL                      |  :white_check_mark:     |
 | Week 10 | Wed, Oct 21 | SQL and beyond                         |                         |
 |         | Fri, Oct 23 | Working with big data                  |                         |
 | Week 11 | Wed, Oct 28 | Parallelization                        |                         |
