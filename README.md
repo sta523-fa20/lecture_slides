@@ -24,7 +24,7 @@ images and the CSS file for reproducibility.
 | Week 9  | Wed, Oct 14 | Shiny part II                          |  :white_check_mark:     |
 |         | Fri, Oct 16 | Databases and SQL                      |  :white_check_mark:     |
 | Week 10 | Wed, Oct 21 | SQL and beyond                         |  :white_check_mark:     |
-|         | Fri, Oct 23 | Working with big data                  |                         |
+|         | Fri, Oct 23 | Working with big data                  |  :white_check_mark:     |
 | Week 11 | Wed, Oct 28 | Parallelization                        |                         |
 |         | Fri, Oct 30 | More parallelization and profiling     |                         |
 | Week 12 | Wed, Nov 04 | Spark & sparklyr part I                |                         |

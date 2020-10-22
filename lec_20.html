@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Working with big data</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Working with big data
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [Chapter 2](https://adv-r.hadley.nz/names-values.html), Advanced R by Wickham, H.
+- `vroom` [vignette](https://cran.r-project.org/web/packages/vroom/vignettes/vroom.html)
+
+---
+
+class: inverse, center, middle
+
+# Memory basics
+
+---
+
+## Names and values
+
+In R, a name has a value. It is not the value that has a name.
+
+For example, in
+
+
+```r
+x &lt;- c(-3, 4, 1)
+```
+
+the object named `x` is a reference to vector `c(-3, 4, 1)`.
+
+&lt;br/&gt;
+
+&lt;center&gt;
+&lt;img src="images/name_bind1.png"&gt;
+&lt;/center&gt;
+
+---
+
+We can see where this lives in memory with
+
+
+```r
+library(lobstr)
+lobstr::obj_addr(x)
+```
+
+```
+#&gt; [1] "0x7fc4f8fdc048"
+```
+
+and its size with
+
+
+```r
+lobstr::obj_size(x)
+```
+
+```
+#&gt; 80 B
+```
+
+---
+
+## Copy-on-modify: atomic vectors
+
+Understanding when R creates a copy of an object will allow you to write
+faster code. This is also important to keep in mind when working with very
+large vectors.
+
+
+```r
+x &lt;- c(-3, 4, 1)
+y &lt;- x
+```
+
+--
+
+
+```r
+obj_addr(x)
+```
+
+```
+#&gt; [1] "0x7fc4f652a258"
+```
+
+```r
+obj_addr(y)
+```
+
+```
+#&gt; [1] "0x7fc4f652a258"
+```
+
+&lt;center&gt;
+&lt;img src="images/name_bind2.png"&gt;
+&lt;/center&gt;
+
+---
+
+
+```r
+y[3] &lt;- 100
+```
+
+--
+
+
+```r
+obj_addr(x)
+```
+
+```
+#&gt; [1] "0x7fc4f652a258"
+```
+
+```r
+obj_addr(y)
+```
+
+```
+#&gt; [1] "0x7fc4f8060408"
+```
+
+&lt;center&gt;
+&lt;img src="images/name_bind3.png"&gt;
+&lt;/center&gt;
+
+---
+
+.pull-left[
+
+```r
+x &lt;- c(0, 1, 9)
+y &lt;- x
+
+obj_addr(x)
+```
+
+```
+#&gt; [1] "0x7fc4fca144f8"
+```
+
+```r
+obj_addr(y)
+```
+
+```
+#&gt; [1] "0x7fc4fca144f8"
+```
+
+
+```r
+y[4] &lt;- -100
+obj_addr(x)
+```
+
+```
+#&gt; [1] "0x7fc4fca144f8"
+```
+
+```r
+obj_addr(y)
+```
+
+```
+#&gt; [1] "0x7fc4f80606d8"
+```
+]
+.pull-right[
+&lt;br/&gt;
+&lt;center&gt;
+&lt;img src="images/name_bind4.png"&gt;
+&lt;/center&gt;
+
+&lt;br/&gt;&lt;br/&gt;
+&lt;center&gt;
+&lt;img src="images/name_bind5.png"&gt;
+&lt;/center&gt;
+]
+
+&lt;br/&gt;
+
+--
+
+Even though only one component changed in the atomic vector `y`, R created
+a new object as seen by the new address in memory.
+
+???
+
+## Copy-on-modify and loops
+
+Poor loop implementation
+
+.tiny[
+
+```r
+n &lt;- 8
+x &lt;- 1
+for (i in seq_len(n)) {
+  cat("Object address start iteration", i, ":", obj_addr(x), "\n")
+  x &lt;- c(x, sqrt(x[i] * i))
+  cat("Object address end iteration  ", i, ":", obj_addr(x), "\n\n")
+}
+```
+]
+
+"Efficient" loop implementation
+
+.tiny[
+
+```r
+n &lt;- 8
+x &lt;- rep(1, n + 1)
+ref(x)
+for (i in seq_len(n)) {
+  cat("Object address start iteration", i, ":", ref(x), "\n")
+  x[i + 1] &lt;- mean(x[i] * i)
+  cat("Object address end iteration  ", i, ":", ref(x), "\n\n")
+}
+```
+]
+
+---
+
+## Memory tracking
+
+Function `tracemem()` marks an object so that a message is printed whenever the 
+internal code copies the object. Let's see when `x` gets copied.
+
+&lt;br/&gt;&lt;br/&gt;
+
+
+```r
+x &lt;- c(0, 1, 1, 2, 3, 5, 8, 13, 21, 34)
+tracemem(x)
+```
+
+```
+#&gt; [1] "&lt;0x7fc4fb90f848&gt;"
+```
+
+--
+
+
+```r
+y &lt;- x
+```
+
+--
+
+
+```r
+y[1] &lt;- 0
+```
+
+```
+#&gt; tracemem[0x7fc4fb90f848 -&gt; 0x7fc4f8a01628]: eval eval withVisible withCallingHandlers handle timing_fn evaluate_call &lt;Anonymous&gt; evaluate in_dir block_exec call_block process_group.block process_group withCallingHandlers process_file &lt;Anonymous&gt; &lt;Anonymous&gt;
+```
+
+---
+
+
+```r
+x
+```
+
+```
+#&gt;  [1]  0  1  1  2  3  5  8 13 21 34
+```
+
+```r
+y
+```
+
+```
+#&gt;  [1]  0  1  1  2  3  5  8 13 21 34
+```
+
+```r
+c(obj_addr(x), obj_addr(y))
+```
+
+```
+#&gt; [1] "0x7fc4fb90f848" "0x7fc4f8a01628"
+```
+
+--
+
+
+```r
+x[1] &lt;- 0
+```
+
+```
+#&gt; tracemem[0x7fc4fb90f848 -&gt; 0x7fc4fba6df28]: eval eval withVisible withCallingHandlers handle timing_fn evaluate_call &lt;Anonymous&gt; evaluate in_dir block_exec call_block process_group.block process_group withCallingHandlers process_file &lt;Anonymous&gt; &lt;Anonymous&gt;
+```
+
+--
+
+
+```r
+lobstr::ref(x)
+```
+
+```
+#&gt; [1:0x7fc4fba6df28] &lt;dbl&gt;
+```
+
+```r
+lobstr::ref(y)
+```
+
+```
+#&gt; [1:0x7fc4f8a01628] &lt;dbl&gt;
+```
+
+```r
+untracemem(x)
+```
+
+---
+
+## Copy-on-modify: lists
+
+
+```r
+x &lt;- list(a = 1, b = 2, c = 3)
+obj_addr(x)
+```
+
+```
+#&gt; [1] "0x7fc4f89f0d98"
+```
+
+--
+
+
+```r
+y &lt;- x
+```
+
+--
+
+
+```r
+c(obj_addr(x), obj_addr(y))
+```
+
+```
+#&gt; [1] "0x7fc4f89f0d98" "0x7fc4f89f0d98"
+```
+
+--
+
+
+```r
+ref(x, y)
+```
+
+```
+#&gt; █ [1:0x7fc4f89f0d98] &lt;named list&gt; 
+#&gt; ├─a = [2:0x7fc4fc824b78] &lt;dbl&gt; 
+#&gt; ├─b = [3:0x7fc4fc824b40] &lt;dbl&gt; 
+#&gt; └─c = [4:0x7fc4fc824b08] &lt;dbl&gt; 
+#&gt;  
+#&gt; [1:0x7fc4f89f0d98]
+```
+
+---
+
+
+```r
+y$c &lt;- 4
+```
+
+--
+
+
+```r
+ref(x, y)
+```
+
+```
+#&gt; █ [1:0x7fc4f89f0d98] &lt;named list&gt; 
+#&gt; ├─a = [2:0x7fc4fc824b78] &lt;dbl&gt; 
+#&gt; ├─b = [3:0x7fc4fc824b40] &lt;dbl&gt; 
+#&gt; └─c = [4:0x7fc4fc824b08] &lt;dbl&gt; 
+#&gt;  
+#&gt; █ [5:0x7fc4f89f0a78] &lt;named list&gt; 
+#&gt; ├─a = [2:0x7fc4fc824b78] 
+#&gt; ├─b = [3:0x7fc4fc824b40] 
+#&gt; └─c = [6:0x7fc4f8fde508] &lt;dbl&gt;
+```
+
+---
+
+
+```r
+x &lt;- list(a = 1, b = 2, c = 3)
+y &lt;- x
+```
+
+--
+
+
+```r
+c(obj_addr(x), obj_addr(y))
+```
+
+```
+#&gt; [1] "0x7fc4f89f9508" "0x7fc4f89f9508"
+```
+
+--
+
+
+```r
+y$d &lt;- 9
+ref(x, y)
+```
+
+```
+#&gt; █ [1:0x7fc4f89f9508] &lt;named list&gt; 
+#&gt; ├─a = [2:0x7fc4fc56a728] &lt;dbl&gt; 
+#&gt; ├─b = [3:0x7fc4fc56a6f0] &lt;dbl&gt; 
+#&gt; └─c = [4:0x7fc4fc56a6b8] &lt;dbl&gt; 
+#&gt;  
+#&gt; █ [5:0x7fc4fd06a738] &lt;named list&gt; 
+#&gt; ├─a = [2:0x7fc4fc56a728] 
+#&gt; ├─b = [3:0x7fc4fc56a6f0] 
+#&gt; ├─c = [4:0x7fc4fc56a6b8] 
+#&gt; └─d = [6:0x7fc4f8fe8eb0] &lt;dbl&gt;
+```
+
+&lt;br/&gt;
+
+R creates a shallow copy. Shared components exist with elements `a`, `b`, and
+`c`.
+
+---
+
+## Copy-on-modify: data frames
+
+
+```r
+library(tidyverse)
+x &lt;- tibble(a = 1:3, b = 9:7)
+```
+
+--
+
+
+```r
+ref(x)
+```
+
+```
+#&gt; █ [1:0x7fc4ff987908] &lt;tibble&gt; 
+#&gt; ├─a = [2:0x7fc4f862a6b8] &lt;int&gt; 
+#&gt; └─b = [3:0x7fc4f8605dc8] &lt;int&gt;
+```
+
+--
+
+
+```r
+y &lt;- x %&gt;% 
+  mutate(b = b ^ 2)
+```
+
+--
+
+
+```r
+ref(x, y)
+```
+
+```
+#&gt; █ [1:0x7fc4ff987908] &lt;tibble&gt; 
+#&gt; ├─a = [2:0x7fc4f862a6b8] &lt;int&gt; 
+#&gt; └─b = [3:0x7fc4f8605dc8] &lt;int&gt; 
+#&gt;  
+#&gt; █ [4:0x7fc4fc727588] &lt;tibble&gt; 
+#&gt; ├─a = [2:0x7fc4f862a6b8] 
+#&gt; └─b = [5:0x7fc4fe365738] &lt;dbl&gt;
+```
+
+---
+
+
+```r
+z &lt;- x
+ref(x, z)
+```
+
+```
+#&gt; █ [1:0x7fc4ff987908] &lt;tibble&gt; 
+#&gt; ├─a = [2:0x7fc4f862a6b8] &lt;int&gt; 
+#&gt; └─b = [3:0x7fc4f8605dc8] &lt;int&gt; 
+#&gt;  
+#&gt; [1:0x7fc4ff987908]
+```
+
+--
+
+
+```r
+z &lt;- x %&gt;% 
+  add_row(a = -1, b = -1)
+```
+
+--
+
+
+```r
+ref(x, z)
+```
+
+```
+#&gt; █ [1:0x7fc4ff987908] &lt;tibble&gt; 
+#&gt; ├─a = [2:0x7fc4f862a6b8] &lt;int&gt; 
+#&gt; └─b = [3:0x7fc4f8605dc8] &lt;int&gt; 
+#&gt;  
+#&gt; █ [4:0x7fc4fc655648] &lt;tibble&gt; 
+#&gt; ├─a = [5:0x7fc4fbbbb838] &lt;dbl&gt; 
+#&gt; └─b = [6:0x7fc50001b218] &lt;dbl&gt;
+```
+
+--
+
+&lt;br/&gt;
+
+If you modify a column, only that column needs to be copied in memory. However,
+if you modify a row, the entire data frame is copied in memory.
+
+---
+
+## Exercise
+
+Can you diagnose what is going on below?
+
+
+```r
+x &lt;- 1:10; y &lt;- x;
+
+tracemem(x)
+```
+
+```
+#&gt; [1] "&lt;0x7fc4fd056840&gt;"
+```
+
+```r
+c(obj_addr(x), obj_addr(y))
+```
+
+```
+#&gt; [1] "0x7fc4fd056840" "0x7fc4fd056840"
+```
+
+```r
+y[1] &lt;- 3
+```
+
+```
+#&gt; tracemem[0x7fc4fd056840 -&gt; 0x7fc4fe2f72f8]: eval eval withVisible withCallingHandlers handle timing_fn evaluate_call &lt;Anonymous&gt; evaluate in_dir block_exec call_block process_group.block process_group withCallingHandlers process_file &lt;Anonymous&gt; &lt;Anonymous&gt; 
+#&gt; tracemem[0x7fc4fe2f72f8 -&gt; 0x7fc4fe2b5e98]: eval eval withVisible withCallingHandlers handle timing_fn evaluate_call &lt;Anonymous&gt; evaluate in_dir block_exec call_block process_group.block process_group withCallingHandlers process_file &lt;Anonymous&gt; &lt;Anonymous&gt;
+```
+
+---
+
+## Object size
+
+Object sizes can sometimes be deceiving.
+
+
+```r
+x &lt;- rnorm(1e6)
+y &lt;- 1:1e6
+z &lt;- seq(1, 1e6, by = 1)
+s &lt;- (1:1e6) / 2
+```
+
+--
+
+
+```r
+c(obj_size(x), obj_size(y), obj_size(z), obj_size(s))
+```
+
+```
+#&gt; * 8,000,048 B
+#&gt; *       680 B
+#&gt; * 8,000,048 B
+#&gt; * 8,000,048 B
+```
+
+---
+
+
+```r
+c(obj_size(c(1L)), obj_size(c(1.0)))
+```
+
+```
+#&gt; * 56 B
+#&gt; * 56 B
+```
+
+--
+
+
+```r
+c(obj_size(c(1L, 2L)), obj_size(as.numeric(c(1.0, 2.0))))
+```
+
+```
+#&gt; * 56 B
+#&gt; * 64 B
+```
+
+--
+
+
+```r
+c(obj_size(c(1L, 2L, 3L)), obj_size(as.numeric(c(1.0, 2.0, 3.0))))
+```
+
+```
+#&gt; * 64 B
+#&gt; * 80 B
+```
+
+--
+
+
+```r
+c(obj_size(integer(10000)), obj_size(numeric(10000)))
+```
+
+```
+#&gt; * 40,048 B
+#&gt; * 80,048 B
+```
+
+&lt;br/&gt;
+
+--
+
+There is overhead with creating vectors in R. Take a look at `?Memory` if
+you want to dig deeper as to the overhead cost.
+
+---
+
+## Exercise
+
+Starting from 0 we can see that
+
+
+```r
+lobstr::obj_size(integer(0))
+```
+
+```
+#&gt; 48 B
+```
+
+```r
+lobstr::obj_size(numeric(0))
+```
+
+```
+#&gt; 48 B
+```
+
+are both 48 bytes. Based on the results on the next slide can you deduce how 
+R handles these numeric data in memory?
+
+---
+
+
+```r
+diff(sapply(0:100, function(x) lobstr::obj_size(integer(x))))
+```
+
+```
+#&gt;   [1]  8  0  8  0 16  0  0  0 16  0  0  0 16  0  0  0 64  0  0  0  0  0  0  0  0
+#&gt;  [26]  0  0  0  0  0  0  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0
+#&gt;  [51]  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8
+#&gt;  [76]  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0  8  0
+```
+
+
+```r
+c(obj_size(integer(20)), obj_size(integer(22)))
+```
+
+```
+#&gt; * 176 B
+#&gt; * 176 B
+```
+
+
+
+```r
+diff(sapply(0:100, function(x) lobstr::obj_size(numeric(x))))
+```
+
+```
+#&gt;   [1]  8  8 16  0 16  0 16  0 64  0  0  0  0  0  0  0  8  8  8  8  8  8  8  8  8
+#&gt;  [26]  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8
+#&gt;  [51]  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8
+#&gt;  [76]  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8  8
+```
+
+
+```r
+c(obj_size(numeric(10)), obj_size(numeric(14)))
+```
+
+```
+#&gt; * 176 B
+#&gt; * 176 B
+```
+
+---
+
+class: inverse, center, middle
+
+# I/O big data
+
+---
+
+## Getting big data into R
+
+Dimensions: 3,185,906 x 9
+
+
+```r
+url &lt;- "http://www2.stat.duke.edu/~sms185/data/bike/cbs_2015.csv"
+```
+
+.tiny[
+
+```r
+system.time({x &lt;- read.csv(url)})
+```
+
+
+```r
+   user  system elapsed 
+*29.739   1.085  37.321 
+```
+]
+
+--
+
+.tiny[
+
+```r
+system.time({x &lt;- readr::read_csv(url)})
+```
+
+
+```r
+Parsed with column specification:
+cols(
+  Duration = col_double(),
+  `Start date` = col_datetime(format = ""),
+  `End date` = col_datetime(format = ""),
+  `Start station number` = col_double(),
+  `Start station` = col_character(),
+  `End station number` = col_double(),
+  `End station` = col_character(),
+  `Bike number` = col_character(),
+  `Member type` = col_character()
+)
+|================================| 100%  369 MB
+   user  system elapsed 
+*12.773   1.727  22.327 
+```
+]
+
+---
+
+.tiny[
+
+```r
+system.time({x &lt;- data.table::fread(url)})
+```
+
+
+```r
+trying URL 'http://www2.stat.duke.edu/~sms185/data/bike/cbs_2015.csv'
+Content type 'text/csv' length 387899567 bytes (369.9 MB)
+==================================================
+downloaded 369.9 MB
+
+   user  system elapsed 
+* 7.363   2.009  19.942 
+```
+]
+
+--
+
+.tiny[
+
+```r
+system.time({x &lt;- vroom::vroom(url)})
+```
+
+
+```r
+Observations: 3,185,906                                                                     
+Variables: 9
+chr  [4]: Start station, End station, Bike number, Member type
+dbl  [3]: Duration, Start station number, End station number
+dttm [2]: Start date, End date
+
+Call `spec()` for a copy-pastable column specification
+Specify the column types with `col_types` to quiet this message
+
+   user  system elapsed 
+* 5.873   2.361  18.606 
+```
+]
+
+---
+
+## Getting bigger data into R
+
+Dimensions: 10,277,677 x 9
+
+
+```r
+url &lt;- "http://www2.stat.duke.edu/~sms185/data/bike/full.csv"
+```
+
+.tiny[
+
+```r
+system.time({x &lt;- read.csv(url)})
+```
+
+
+```r
+    user  system elapsed 
+*119.472   5.037 139.214 
+```
+]
+
+--
+
+.tiny[
+
+```r
+system.time({x &lt;- readr::read_csv(url)})
+```
+
+
+```r
+Parsed with column specification:
+cols(
+  Duration = col_double(),
+  `Start date` = col_datetime(format = ""),
+  `End date` = col_datetime(format = ""),
+  `Start station number` = col_double(),
+  `Start station` = col_character(),
+  `End station number` = col_double(),
+  `End station` = col_character(),
+  `Bike number` = col_character(),
+  `Member type` = col_character()
+)
+|================================| 100%  1191 MB
+   user  system elapsed 
+*46.845   7.607  87.425 
+```
+]
+
+---
+
+.tiny[
+
+```r
+system.time({x &lt;- data.table::fread(url)})
+```
+
+
+```r
+trying URL 'http://www2.stat.duke.edu/~sms185/data/bike/full.csv'
+Content type 'text/csv' length 1249306730 bytes (1191.4 MB)
+==================================================
+downloaded 1191.4 MB
+
+|--------------------------------------------------|
+|==================================================|
+   user  system elapsed 
+*33.402   7.249  79.806 
+```
+]
+
+--
+
+.tiny[
+
+```r
+system.time({x &lt;- vroom::vroom(url)})
+```
+
+
+```r
+Observations: 10,277,677                                                              
+Variables: 9
+chr  [4]: Start station, End station, Bike number, Member type
+dbl  [3]: Duration, Start station number, End station number
+dttm [2]: Start date, End date
+
+Call `spec()` for a copy-pastable column specification
+Specify the column types with `col_types` to quiet this message
+   user  system elapsed 
+*18.837   6.731  57.203 
+```
+]
+
+---
+
+## Summary
+
+|        Function       | Elapsed Time (s) |
+|----------------------:|:------------:|
+|      `vroom::vroom()` |      ~57     |
+| `data.table::fread()` |      ~80     |
+|   `readr::read_csv()` |      ~87     |
+|          `read.csv()` |     ~139     |
+
+&lt;br/&gt;
+
+.small[
+Observations: 10,277,677
+
+Variables: 9
+]
+
+---
+
+class: inverse, center, middle
+
+# Wrangling big data
+
+---
+
+## Package `dtplyr`
+
+`dtplyr` provides a `data.table` backend for `dplyr`. The goal of `dtplyr` is 
+to allow you to write dplyr code that is automatically translated to the 
+equivalent, but usually much faster, `data.table` code.
+
+&lt;br/&gt;
+
+
+```r
+library(dtplyr)
+library(tidyverse)
+```
+
+&lt;br/&gt;
+
+Since it is a backend, you will use `dplyr` verbs (functions) as before.
+
+---
+
+## Get big data
+
+.tiny[
+
+```r
+base_url &lt;- "https://s3.amazonaws.com/nyc-tlc/trip+data/yellow_tripdata_2019-"
+month_ext &lt;- str_pad(1:12, width = 2, pad = "0")
+urls &lt;- str_c(base_url, month_ext, ".csv", sep = "")
+
+taxi_2019 &lt;- map_df(urls, vroom)
+```
+]
+
+*Caution:* this full dataset is a dataframe of 84,399,019 x 18.
+
+.tiny[
+
+```r
+# A tibble: 84,399,019 x 18
+   VendorID tpep_pickup_dat… tpep_dropoff_da… passenger_count trip_distance RatecodeID
+      &lt;int&gt; &lt;chr&gt;            &lt;chr&gt;                      &lt;int&gt;         &lt;dbl&gt;      &lt;int&gt;
+ 1        1 2019-01-01 00:4… 2019-01-01 00:5…               1           1.5          1
+ 2        1 2019-01-01 00:5… 2019-01-01 01:1…               1           2.6          1
+ 3        2 2018-12-21 13:4… 2018-12-21 13:5…               3           0            1
+ 4        2 2018-11-28 15:5… 2018-11-28 15:5…               5           0            1
+ 5        2 2018-11-28 15:5… 2018-11-28 15:5…               5           0            2
+ 6        2 2018-11-28 16:2… 2018-11-28 16:2…               5           0            1
+ 7        2 2018-11-28 16:2… 2018-11-28 16:3…               5           0            2
+ 8        1 2019-01-01 00:2… 2019-01-01 00:2…               1           1.3          1
+ 9        1 2019-01-01 00:3… 2019-01-01 00:4…               1           3.7          1
+10        1 2019-01-01 00:5… 2019-01-01 01:0…               2           2.1          1
+# … with 84,399,009 more rows, and 12 more variables: store_and_fwd_flag &lt;chr&gt;,
+#   PULocationID &lt;int&gt;, DOLocationID &lt;int&gt;, payment_type &lt;int&gt;, fare_amount &lt;dbl&gt;, extra &lt;dbl&gt;,
+#   mta_tax &lt;dbl&gt;, tip_amount &lt;dbl&gt;, tolls_amount &lt;dbl&gt;, improvement_surcharge &lt;dbl&gt;,
+#   total_amount &lt;dbl&gt;, congestion_surcharge &lt;dbl&gt;
+```
+]
+
+---
+
+## Time comparison
+
+Using `dplyr`
+
+.tiny[
+
+```r
+system.time({
+ taxi_2019 %&gt;% 
+   mutate(pickup_datetime  = as_datetime(tpep_pickup_datetime),
+          dropoff_datetime = as_datetime(tpep_dropoff_datetime),
+          pickup_month     = month(pickup_datetime, label = TRUE),
+          pickup_day       = wday(pickup_datetime, label = TRUE)) %&gt;% 
+   group_by(pickup_month, pickup_day) %&gt;% 
+   summarise(mean_trip_distance = mean(trip_distance))
+})
+    user  system elapsed 
+*339.326  21.729 444.383 
+```
+]
+
+--
+
+Using `dtplyr`
+
+.tiny[
+
+```r
+*taxi_2019_lazy &lt;- lazy_dt(taxi_2019)
+system.time({
+ taxi_2019_lazy %&gt;% 
+   mutate(pickup_datetime  = as_datetime(tpep_pickup_datetime),
+          dropoff_datetime = as_datetime(tpep_dropoff_datetime),
+          pickup_month     = month(pickup_datetime, label = TRUE),
+          pickup_day       = wday(pickup_datetime, label = TRUE)) %&gt;% 
+   group_by(pickup_month, pickup_day) %&gt;% 
+   summarise(mean_trip_distance = mean(trip_distance)) %&gt;% 
+*  as_tibble()
+})
+    user  system elapsed 
+*384.199  47.111 530.458
+```
+]
+
+---
+
+## What's the point of this package?
+
+The benefit comes when
+
+1. you have many many groups (millions);
+
+2. you are sorting;
+
+3. you are doing joins or other merges with large data.
+
+&lt;br/&gt;
+
+`dtplyr` will always be a little slower than `data.table`. However, this 
+slightly worse performance may be better than learning the sytax of 
+`data.table`.
+
+---
+
+class: inverse, center, middle
+
+# Going forward
+
+---
+
+## Big data strategies
+
+1. Avoid unnecessary copies of large objects
+
+2. Downsample - you can't exceed `\(2 ^ 31 - 1\)` rows, columns, or components
+
+  - Downsample to visualize and use summary statistics
+  - Downsample to wrangle and understand
+  - Downsample to model
+
+3. Get more RAM - this is not easy or even sometimes an option
+
+4. Parallelize - this is not always an option
+
+  - Execute a chunk and pull strategy
+
+---
+
+## References
+
+1. Data Table Back-End for dplyr. (2020). 
+   https://dtplyr.tidyverse.org/index.html.
+   
+2. Read and Write Rectangular Text Data Quickly. (2020). 
+   https://vroom.r-lib.org/
+
+3. Wickham, H. (2019). Advanced R. https://adv-r.hadley.nz/
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
