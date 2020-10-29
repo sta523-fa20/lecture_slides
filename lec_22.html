@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Parallelization and Profiling</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Parallelization and Profiling
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- Getting Started with `doMC` and `foreach`
+  [vignette](https://cran.r-project.org/web/packages/doMC/vignettes/gettingstartedMC.pdf)
+- `profvis` [guide](https://rstudio.github.io/profvis/)
+    
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## Benchmarking with package `bench`
+
+
+```r
+library(bench)
+x &lt;- runif(n = 1000000)
+bench::mark(
+  sqrt(x),
+  x ^ 0.5,
+  x ^ (1 / 2),
+  min_time = Inf, max_iterations = 1000
+)
+```
+
+```
+#&gt; # A tibble: 3 x 6
+#&gt;   expression      min   median `itr/sec` mem_alloc `gc/sec`
+#&gt;   &lt;bch:expr&gt; &lt;bch:tm&gt; &lt;bch:tm&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
+#&gt; 1 sqrt(x)      2.12ms   2.37ms     398.     7.63MB   115.  
+#&gt; 2 x^0.5       17.12ms  19.13ms      52.6    7.63MB     8.70
+#&gt; 3 x^(1/2)     17.22ms  18.48ms      53.8    7.63MB     8.99
+```
+
+--
+
+&lt;br/&gt;&lt;br/&gt;
+
+Functions `Sys.time()` and `bench::system_time()` are also available for
+you to time your code.
+
+---
+
+## Ways to parallelize
+
+1. Sockets
+&lt;br/&gt;&lt;br/&gt;
+A new version of R is launched on each core.
+    - Available on all systems
+    - Each process on each core is unique
+&lt;br/&gt;&lt;br/&gt;
+2. Forking
+&lt;br/&gt;&lt;br/&gt;
+A copy of the current R session is moved to new cores.
+    - **Not available on Windows**
+    - Less overhead and easy to implement
+
+---
+
+## Package `parallel`
+
+
+```r
+library(parallel)
+```
+
+
+Some core functions:
+
+- `detectCores()`
+
+- `pvec()`, parallelize a vector map function using forking
+    - Argument `mc.cores` is used to set the number of cores
+
+- `mclapply()`, parallel version of `lapply()` using forking
+    - Argument `mc.cores` is used to set the number of cores
+    - Arguments `mc.preschedule` and `affinity.list` can be used for
+      load balancing.
+
+- `mcparallel()`, `mccollect()`, evaluate an R expression asynchronously 
+  in a separate process
+
+Our DSS R cluster has 16 cores available for use while
+your laptop probably has 4 or 8.
+
+---
+
+## Load balancing example
+
+Recall: `mclapply()` relies on forking.
+
+.small[
+
+```r
+sleepR &lt;- function(x) {
+  Sys.sleep(x)
+  runif(1)
+}
+x &lt;- c(2.5, 2.5, 5)
+aff_list_bal &lt;- c(1, 1, 2)
+aff_list_unbal &lt;- c(1, 2, 2)
+```
+]
+
+--
+
+.small[
+
+```r
+# balanced load
+system.time({
+  mclapply(x, sleepR, mc.cores = 2,
+*          mc.preschedule = FALSE, affinity.list = aff_list_bal)
+})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   0.008   0.010   5.019
+```
+]
+
+--
+
+.small[
+
+```r
+# unbalanced load
+system.time({
+  mclapply(x, sleepR, mc.cores = 2,
+*          mc.preschedule = FALSE, affinity.list = aff_list_unbal)
+})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   0.007   0.009   7.516
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Sockets
+
+---
+
+## Using sockets to parallelize
+
+The basic recipe is as follows:
+
+
+```r
+detectCores()
+c1 &lt;- makeCluster()
+result &lt;- clusterApply(cl = c1, ...)
+stopCluster(c1)
+```
+
+&lt;br/&gt;
+
+Here you are spawning new R sessions. Data, packages, functions, etc. need to be
+shipped to the workers.
+
+---
+
+## Sockets example
+
+Function `clusterEvalQ()` evaluates a literal expression on each cluster node.
+
+
+```r
+clust &lt;- makeCluster(4)
+library(nycflights13)
+clusterEvalQ(cl = clust, dim(flights))
+stopCluster(clust)
+```
+
+--
+
+
+```r
+Error in checkForRemoteErrors(lapply(cl, recvResult)) : 
+  4 nodes produced errors; first error: object 'flights' not found
+```
+
+&lt;br/&gt;
+
+There is no inheritance. Package `nycflights13` is not loaded on the new R
+sessions spawned on each individual core.
+
+---
+
+
+```r
+clust &lt;- makeCluster(4)
+clusterEvalQ(cl = clust, {
+               library(nycflights13)
+               dim(flights)})
+```
+
+```
+#&gt; [[1]]
+#&gt; [1] 336776     19
+#&gt; 
+#&gt; [[2]]
+#&gt; [1] 336776     19
+#&gt; 
+#&gt; [[3]]
+#&gt; [1] 336776     19
+#&gt; 
+#&gt; [[4]]
+#&gt; [1] 336776     19
+```
+
+```r
+stopCluster(clust)
+```
+
+&lt;br/&gt;
+
+Function `clusterExport()` can be used to pass objects from the master process
+to the corresponding spawned sessions.
+
+---
+
+
+```r
+cl &lt;- makeCluster(4)
+*library(nycflights13)
+*clusterExport(cl = cl, varlist = c("flights"))
+clusterEvalQ(cl = cl, {dim(flights)})
+```
+
+```
+#&gt; [[1]]
+#&gt; [1] 336776     19
+#&gt; 
+#&gt; [[2]]
+#&gt; [1] 336776     19
+#&gt; 
+#&gt; [[3]]
+#&gt; [1] 336776     19
+#&gt; 
+#&gt; [[4]]
+#&gt; [1] 336776     19
+```
+
+```r
+stopCluster(cl)
+```
+
+---
+
+## Apply operations using clusters
+
+There exists a family of analogous apply functions that use clusters.
+
+&lt;br/&gt;
+
+|   Function      |               Description               |
+|:----------------|:----------------------------------------|
+| `parApply()`    | parallel version of `apply()`           |
+| `parLapply()`   | parallel version of `lapply()`          |
+| `parLapplyLB()` | load balancing version of `parLapply()` |
+| `parSapply()`   | parallel version of `sapply()`          |
+| `parSapplyLB()` | load balancing version of `parSapply()` |
+
+&lt;br/&gt;
+
+The first argument is a cluster object. Subsequent arguments are similar
+to the corresponding base `apply()` variants.
+
+---
+
+## Bootstrapping
+
+Parallelize the bootstrap process using `dplyr` functions.
+
+
+```r
+library(tidyverse)
+cl &lt;- makeCluster(4)
+
+boot_samples &lt;- clusterEvalQ(cl = cl, {
+    library(dplyr)
+    create_boot_sample &lt;- function() {
+      mtcars %&gt;% 
+        select(mpg) %&gt;% 
+        sample_n(size = nrow(mtcars), replace = TRUE)
+    }
+    replicate(2500, create_boot_sample())
+  }
+)
+```
+
+--
+
+
+```r
+map(boot_samples, ~parLapply(cl, X = ., fun = mean)) %&gt;% 
+  unlist() %&gt;% 
+  as_tibble() %&gt;% 
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  theme_minimal(base_size = 16)
+```
+
+---
+
+&lt;img src="lec_22_files/figure-html/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /&gt;
+
+--
+
+
+```r
+stopCluster(cl)
+```
+
+---
+
+class: inverse, center, middle
+
+# `doMC` and `foreach`
+
+---
+
+## Parallelized `for` loop
+
+Package `doMC` is a parallel backend for the `foreach` package - a package
+that allows you to execute `for` loops in parallel.
+
+
+```r
+library(doMC)
+library(foreach)
+```
+
+Key functions:
+
+- `doMC::registerDoMC()`, set the number of cores for the parallel backend to
+  be used with `foreach`
+  
+- `foreach`, `%dopar%`, `%do%`, parallel loop
+
+&lt;br/&gt;&lt;br/&gt;&lt;br/&gt;
+
+&lt;i&gt;
+`doMC` serves as an interface between `foreach` and `multicore`. Since 
+`multicore` only works with systems that support forking, these functions
+will not work properly on Windows.
+&lt;/i&gt;
+
+---
+
+## Set workers
+
+To get started, set the number of cores with `registerDoMC()`.
+
+
+```r
+# check cores set up
+getDoParWorkers()
+```
+
+```
+#&gt; [1] 1
+```
+
+```r
+# set 4 cores
+registerDoMC(4)
+getDoParWorkers()
+```
+
+```
+#&gt; [1] 4
+```
+
+---
+
+## Serial and parallel with `foreach()`
+
+.pull-left[
+
+Sequential
+
+.small[
+
+```r
+foreach(i = 1:4) %do% 
+  sort(runif(n = 1e7, max = i))[1]
+```
+
+```
+#&gt; [[1]]
+#&gt; [1] 1.043081e-07
+#&gt; 
+#&gt; [[2]]
+#&gt; [1] 1.625158e-07
+#&gt; 
+#&gt; [[3]]
+#&gt; [1] 4.470348e-08
+#&gt; 
+#&gt; [[4]]
+#&gt; [1] 9.313226e-09
+```
+]
+
+.small[
+
+```r
+times(2) %do%
+  sort(runif(n = 1e7))[1]
+```
+
+```
+#&gt; [1] 2.093147e-07 1.059379e-07
+```
+]
+
+]
+
+.pull-right[
+
+Parallel
+
+.small[
+
+```r
+foreach(i = 1:4) %dopar%
+  sort(runif(n = 1e7, max = i))[1]
+```
+
+```
+#&gt; [[1]]
+#&gt; [1] 1.44355e-08
+#&gt; 
+#&gt; [[2]]
+#&gt; [1] 6.798655e-08
+#&gt; 
+#&gt; [[3]]
+#&gt; [1] 9.848736e-08
+#&gt; 
+#&gt; [[4]]
+#&gt; [1] 1.490116e-08
+```
+]
+
+.small[
+
+```r
+times(2) %dopar%
+  sort(runif(n = 1e7))[1]
+```
+
+```
+#&gt; [1] 4.251488e-07 4.237518e-08
+```
+]
+
+]
+
+---
+
+## Time comparison
+
+.pull-left[
+
+Sequential
+
+.small[
+
+```r
+system.time({
+  foreach(i = 1:4) %do% 
+    sort(runif(n = 1e7, max = i))[1]
+})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   3.296   0.144   3.448
+```
+]
+
+.small[
+
+```r
+system.time({
+  for (i in 1:4)
+    sort(runif(n = 1e7, max = i))[1]
+})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   3.472   0.107   3.589
+```
+]
+
+]
+
+.pull-right[
+
+Parallel
+
+.small[
+
+```r
+system.time({
+  foreach(i = 1:4) %dopar%
+    sort(runif(n = 1e7, max = i))[1]
+})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   2.453   0.335   1.440
+```
+]
+
+]
+
+Even with four cores we don't see a four factor improvement in time.
+
+---
+
+## Iterate over multiple indices
+
+Add more indices separated by commas. Argument `.combine` allows you to format
+the result into something other than the default list.
+
+Equal `i` and `j`
+
+
+```r
+foreach(i = 1:3, j = -2:0, .combine = "c") %dopar% {i ^ j}
+```
+
+```
+#&gt; [1] 1.0 0.5 1.0
+```
+
+--
+
+Longer `j`
+
+
+```r
+foreach(i = 1:3, j = -3:0, .combine = "c") %dopar% {i ^ j}
+```
+
+```
+#&gt; [1] 1.0000000 0.2500000 0.3333333
+```
+
+--
+
+Longer `i`
+
+
+```r
+foreach(i = 1:4, j = 0:1, .combine = "c") %dopar% {i ^ j}
+```
+
+```
+#&gt; [1] 1 2
+```
+
+--
+
+Length coercion is not supported. We'll need a nested structure.
+
+---
+
+## Nested `foreach` loops
+
+The `%:%` operator is the nesting operator, used for creating nested `foreach`
+loops.
+
+
+```r
+foreach(i = 1:4, .combine = "c") %:% 
+  foreach(j = 0:1, .combine = "c") %dopar% 
+    {i ^ j}
+```
+
+```
+#&gt; [1] 1 1 1 2 1 3 1 4
+```
+
+--
+
+
+```r
+foreach(i = 1:4, .combine = "data.frame") %:% 
+  foreach(j = 0:1, .combine = "c") %dopar% 
+    {i ^ j}
+```
+
+```
+#&gt;   result.1 result.2 result.3 result.4
+#&gt; 1        1        1        1        1
+#&gt; 2        1        2        3        4
+```
+
+--
+
+
+```r
+foreach(i = 1:4, .combine = "c") %:% 
+  foreach(j = 0:1, .combine = "+") %dopar% 
+    {i ^ j}
+```
+
+```
+#&gt; [1] 2 3 4 5
+```
+
+---
+
+## Exercise
+
+The 1986 crash of the space shuttle Challenger was linked to failure of 
+O-ring seals in the rocket engines. Data was collected on the 23 previous 
+shuttle missions.
+
+Perform leave-one-out cross validation in parallel fitting a logistic 
+regression model where the response is `damage` / `no_damage`, predictor is 
+`temp`, and data is from `orings` in package `faraway`.
+
+
+```r
+library(tidyverse)
+library(faraway)
+data("orings")
+orings_logistic &lt;- orings %&gt;% 
+  mutate(damage = ifelse(damage &gt; 0, 1, 0))
+```
+
+Compute the average test errors:
+
+`$$\mbox{average test error} = \frac{1}{n} \sum_{i = 1}^{n} 1_{(y_i \neq \hat{y}_i^{-i})}$$`
+
+???
+
+## Solution
+
+.solution[
+
+```r
+registerDoMC(4)
+foreach(i = 1:dim(orings)[1], .combine = "+") %dopar% {
+  m &lt;- glm(damage ~ temp, family = "binomial", 
+           data = orings_logistic[-i, , drop = FALSE]) 
+  y_hat &lt;- round(predict(m, newdata = orings_logistic[i, , drop = FALSE], 
+                         type = "response"))
+  y &lt;- orings_logistic[i, , drop = FALSE]$damage
+  (abs(y - y_hat)) / dim(orings_logistic)[1]
+}
+```
+
+```
+#&gt;         1 
+#&gt; 0.1304348
+```
+]
+
+---
+
+## Exercise hint
+
+Perform leave-one-out cross validation in parallel fitting a logistic 
+regression model where the response is `damage` / `no_damage`, predictor is 
+`temp`, and data is from `orings` in package `faraway`.
+
+.tiny[
+
+```r
+library(tidyverse)
+library(faraway)
+data("orings")
+orings_logistic &lt;- orings %&gt;% 
+  mutate(damage = ifelse(damage &gt; 0, 1, 0))
+```
+]
+
+Compute the average test errors:
+
+`$$\mbox{average test error} = \frac{1}{n} \sum_{i = 1}^{n} 1_{(y_i \neq \hat{y}_i^{-i})}$$`
+
+Template code:
+
+.tiny[
+
+```r
+m &lt;- glm(damage ~ temp, family = "binomial", 
+           data = orings_logistic[-i, , drop = FALSE]) 
+y_hat &lt;- round(predict(m, newdata = orings_logistic[i, , drop = FALSE], 
+                       type = "response"))
+y &lt;- orings_logistic[i, , drop = FALSE]$damage
+```
+]
+
+---
+
+## More bootstrap
+
+Create a function that returns `\(\hat{\beta}_1\)`.
+
+
+```r
+quiet_glm &lt;- quietly(glm)
+
+get_b1 &lt;- function() {
+  orings_boot &lt;- orings_logistic %&gt;% 
+    sample_n(size = dim(orings_logistic)[1], replace = TRUE)
+  m &lt;- quiet_glm(damage ~ temp, 
+                 family = "binomial", data = orings_boot)
+  b1 &lt;- coef(m$result)["temp"]
+  if (length(m$warnings)) {b1 &lt;- NULL}
+  return(b1)
+}
+```
+
+Generate 10,000 bootstrap samples.
+
+
+```r
+N &lt;- 10000
+registerDoMC(4)
+b1_boot_sample &lt;- times(N) %dopar% get_b1()
+```
+
+---
+
+.tiny[
+
+```r
+tibble(x = b1_boot_sample) %&gt;% 
+  ggplot(aes(x = x)) +
+  geom_histogram(bins = 30, fill = "blue", color = "grey", alpha = .4) +
+  labs(x = expression(hat(beta)[1])) + theme_bw(base_size = 16)
+```
+
+&lt;img src="lec_22_files/figure-html/unnamed-chunk-37-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+--
+
+.tiny[
+
+```r
+quantile(b1_boot_sample, c(.025, .975))
+```
+
+```
+#&gt;       2.5%      97.5% 
+#&gt; -0.5726802 -0.0763743
+```
+
+```r
+quantile(b1_boot_sample, c(.03, .98))
+```
+
+```
+#&gt;          3%         98% 
+#&gt; -0.55545004 -0.06787193
+```
+]
+
+---
+
+## Time check
+
+In parallel, 4 cores:
+
+
+```r
+N &lt;- 10000
+registerDoMC(4)
+system.time({b1_boot_sample &lt;- times(N) %dopar% get_b1()})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;  29.540   3.131   8.943
+```
+
+In parallel, 8 cores:
+
+
+```r
+registerDoMC(8)
+system.time({b1_boot_sample &lt;- times(N) %dopar% get_b1()})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;  39.809   4.487   7.929
+```
+
+Sequentially:
+
+
+```r
+system.time({replicate(N, get_b1())})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;  18.921   1.559  20.562
+```
+
+---
+
+class: inverse, center, middle
+
+# Profiling
+
+---
+
+## Profiling with `profvis`
+
+We can do more than just time our code. Package `profvis` provides an
+interactive interface to visualize profiling data.
+
+
+```r
+library(profvis)
+```
+
+&lt;br/&gt;&lt;br/&gt;
+
+To profile your code
+
+- wrap your R expression inside `profvis()`,
+
+- or use RStudio's GUI under the `Profile` tab.
+
+---
+
+## Exercise
+
+First, profile the below code. Then, try to improve the computation time while 
+keeping the loops and not using parallel computing. Lastly, try an apply variant
+and evaluate the performance.
+
+.tiny[
+
+```r
+reps &lt;- 10000
+n &lt;- 1000
+
+beta_0 &lt;- 2
+beta_1 &lt;- .5
+beta_2 &lt;- 3
+
+beta_1_hat_all &lt;- c()
+
+for (s in c(1, 3, 7)) {
+  beta_1_hat &lt;- c()
+  for (i in 1:reps) {
+    X &lt;- cbind(rnorm(n), rnorm(n) ^ 2)
+    Y &lt;- beta_0 + beta_1 * X[, 1, drop = FALSE]  + 
+      beta_2 * X[, 2, drop = FALSE] + rnorm(n, sd = s)
+    m &lt;- lm(Y~X)
+    beta_1_hat &lt;- c(beta_1_hat, coefficients(m)[2])
+  }
+  beta_1_hat_all &lt;- c(beta_1_hat_all, beta_1_hat)
+}
+
+beta_df &lt;- tibble(sd         = rep(c(1, 3, 7), each = reps),
+                  beta_1_hat = beta_1_hat_all)
+```
+]
+
+???
+
+## Solution (start)
+
+.solution[
+
+```r
+reps &lt;- 10000
+n &lt;- 1000
+
+beta_0 &lt;- 2
+beta_1 &lt;- .5
+beta_2 &lt;- 3
+st_dev &lt;- c(1, 3, 7)
+
+beta_1_hat_all &lt;- NULL
+
+for (s in st_dev) {
+  beta_1_hat &lt;- numeric(reps)
+  for (i in 1:reps) {
+    X &lt;- cbind(1, rnorm(n), rnorm(n) ^ 2)
+    Y &lt;- beta_0 + beta_1 * X[, 2, drop = FALSE]  + 
+      beta_2 * X[, 3, drop = FALSE] + rnorm(n, sd = s)
+    beta_1_hat[i] &lt;- (solve(t(X) %*% X) %*% t(X) %*% Y)[2, ]
+  }
+  beta_1_hat_all &lt;- c(beta_1_hat_all, beta_1_hat)
+}
+
+beta_df &lt;- tibble(sd         = rep(c(1, 3, 7), each = reps),
+                  beta_1_hat = beta_1_hat_all)
+```
+]
+
+---
+
+## Save profile
+
+.tiny[
+
+```r
+library(profvis)
+p &lt;- profvis({reps &lt;- 10000
+n &lt;- 1000
+
+beta_0 &lt;- 2
+beta_1 &lt;- .5
+beta_2 &lt;- 3
+
+beta_1_hat_all &lt;- c()
+
+for (s in c(1, 3, 7)) {
+  beta_1_hat &lt;- c()
+  for (i in 1:reps) {
+    X &lt;- cbind(rnorm(n), rnorm(n) ^ 2)
+    Y &lt;- beta_0 + beta_1 * X[, 1, drop = FALSE]  + 
+      beta_2 * X[, 2, drop = FALSE] + rnorm(n, sd = s)
+    m &lt;- lm(Y~X)
+    beta_1_hat &lt;- c(beta_1_hat, coefficients(m)[2])
+  }
+  beta_1_hat_all &lt;- c(beta_1_hat_all, beta_1_hat)
+}
+
+beta_df &lt;- tibble(sd         = rep(c(1, 3, 7), each = reps),
+                  beta_1_hat = beta_1_hat_all)})
+
+htmlwidgets::saveWidget(p, "profile.html")
+```
+]
+
+&lt;a href="./profile.html"&gt;Profiled code&lt;/a&gt;
+
+---
+
+## Tips for improving performance
+
+1. Identify bottlenecks in your code - you have to know what code to focus on.
+
+2. Slim down your functions. Use a specific function for a specific problem.
+  - Do you need everything that comes with the output of `lm()`?
+  - Do you only want the p-values from 1,000 tests?
+  
+3. Vectorise
+  - Matrix algebra is a form of vectorization. The loops are executed via 
+    external libraries such as BLAS.
+    
+4. Avoid copies
+  - Be cautious with `c()`, `append()`, `cbind()`, `rbind()`, or `paste()`.
+  - Check how often the garbage collector is running in your profiled code.
+
+---
+
+## References
+
+1. Profvis — Interactive Visualizations for Profiling R Code. (2020). 
+   https://rstudio.github.io/profvis/.
+
+2. Weston, Steve. Getting started with doMC and foreach. (2020).
+   https://cran.r-project.org/web/packages/doMC/vignettes/gettingstartedMC.pdf
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

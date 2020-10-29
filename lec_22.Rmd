@@ -1,0 +1,814 @@
+---
+title: "Parallelization and Profiling"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- Getting Started with `doMC` and `foreach`
+  [vignette](https://cran.r-project.org/web/packages/doMC/vignettes/gettingstartedMC.pdf)
+- `profvis` [guide](https://rstudio.github.io/profvis/)
+    
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## Benchmarking with package `bench`
+
+```{r, cache=TRUE}
+library(bench)
+x <- runif(n = 1000000)
+bench::mark(
+  sqrt(x),
+  x ^ 0.5,
+  x ^ (1 / 2),
+  min_time = Inf, max_iterations = 1000
+)
+```
+
+--
+
+<br/><br/>
+
+Functions `Sys.time()` and `bench::system_time()` are also available for
+you to time your code.
+
+---
+
+## Ways to parallelize
+
+1. Sockets
+<br/><br/>
+A new version of R is launched on each core.
+    - Available on all systems
+    - Each process on each core is unique
+<br/><br/>
+2. Forking
+<br/><br/>
+A copy of the current R session is moved to new cores.
+    - **Not available on Windows**
+    - Less overhead and easy to implement
+
+---
+
+## Package `parallel`
+
+```{r}
+library(parallel)
+```
+
+
+Some core functions:
+
+- `detectCores()`
+
+- `pvec()`, parallelize a vector map function using forking
+    - Argument `mc.cores` is used to set the number of cores
+
+- `mclapply()`, parallel version of `lapply()` using forking
+    - Argument `mc.cores` is used to set the number of cores
+    - Arguments `mc.preschedule` and `affinity.list` can be used for
+      load balancing.
+
+- `mcparallel()`, `mccollect()`, evaluate an R expression asynchronously 
+  in a separate process
+
+Our DSS R cluster has 16 cores available for use while
+your laptop probably has 4 or 8.
+
+---
+
+## Load balancing example
+
+Recall: `mclapply()` relies on forking.
+
+.small[
+```{r}
+sleepR <- function(x) {
+  Sys.sleep(x)
+  runif(1)
+}
+x <- c(2.5, 2.5, 5)
+aff_list_bal <- c(1, 1, 2)
+aff_list_unbal <- c(1, 2, 2)
+```
+]
+
+--
+
+.small[
+```{r}
+# balanced load
+system.time({
+  mclapply(x, sleepR, mc.cores = 2,
+           mc.preschedule = FALSE, affinity.list = aff_list_bal) #<<
+})
+```
+]
+
+--
+
+.small[
+```{r}
+# unbalanced load
+system.time({
+  mclapply(x, sleepR, mc.cores = 2,
+           mc.preschedule = FALSE, affinity.list = aff_list_unbal) #<<
+})
+```
+]
+
+---
+
+class: inverse, center, middle
+
+# Sockets
+
+---
+
+## Using sockets to parallelize
+
+The basic recipe is as follows:
+
+```{r eval=FALSE}
+detectCores()
+c1 <- makeCluster()
+result <- clusterApply(cl = c1, ...)
+stopCluster(c1)
+```
+
+<br/>
+
+Here you are spawning new R sessions. Data, packages, functions, etc. need to be
+shipped to the workers.
+
+---
+
+## Sockets example
+
+Function `clusterEvalQ()` evaluates a literal expression on each cluster node.
+
+```{r eval=FALSE}
+clust <- makeCluster(4)
+library(nycflights13)
+clusterEvalQ(cl = clust, dim(flights))
+stopCluster(clust)
+```
+
+--
+
+```{r eval=FALSE}
+Error in checkForRemoteErrors(lapply(cl, recvResult)) : 
+  4 nodes produced errors; first error: object 'flights' not found
+```
+
+<br/>
+
+There is no inheritance. Package `nycflights13` is not loaded on the new R
+sessions spawned on each individual core.
+
+---
+
+```{r}
+clust <- makeCluster(4)
+clusterEvalQ(cl = clust, {
+               library(nycflights13)
+               dim(flights)})
+stopCluster(clust)
+```
+
+<br/>
+
+Function `clusterExport()` can be used to pass objects from the master process
+to the corresponding spawned sessions.
+
+---
+
+```{r}
+cl <- makeCluster(4)
+library(nycflights13) #<<
+clusterExport(cl = cl, varlist = c("flights")) #<<
+clusterEvalQ(cl = cl, {dim(flights)})
+stopCluster(cl)
+```
+
+---
+
+## Apply operations using clusters
+
+There exists a family of analogous apply functions that use clusters.
+
+<br/>
+
+|   Function      |               Description               |
+|:----------------|:----------------------------------------|
+| `parApply()`    | parallel version of `apply()`           |
+| `parLapply()`   | parallel version of `lapply()`          |
+| `parLapplyLB()` | load balancing version of `parLapply()` |
+| `parSapply()`   | parallel version of `sapply()`          |
+| `parSapplyLB()` | load balancing version of `parSapply()` |
+
+<br/>
+
+The first argument is a cluster object. Subsequent arguments are similar
+to the corresponding base `apply()` variants.
+
+---
+
+## Bootstrapping
+
+Parallelize the bootstrap process using `dplyr` functions.
+
+```{r eval=FALSE}
+library(tidyverse)
+cl <- makeCluster(4)
+
+boot_samples <- clusterEvalQ(cl = cl, {
+    library(dplyr)
+    create_boot_sample <- function() {
+      mtcars %>% 
+        select(mpg) %>% 
+        sample_n(size = nrow(mtcars), replace = TRUE)
+    }
+    replicate(2500, create_boot_sample())
+  }
+)
+```
+
+--
+
+```{r eval=FALSE}
+map(boot_samples, ~parLapply(cl, X = ., fun = mean)) %>% 
+  unlist() %>% 
+  as_tibble() %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  theme_minimal(base_size = 16)
+```
+
+---
+
+```{r echo=FALSE, fig.align='center'}
+library(tidyverse)
+cl <- makeCluster(4)
+
+boot_samples <- clusterEvalQ(cl = cl, {
+    library(dplyr)
+    create_boot_sample <- function() {
+      mtcars %>% 
+        select(mpg) %>% 
+        sample_n(size = nrow(mtcars), replace = TRUE)
+    }
+    replicate(2500, create_boot_sample())
+  }
+)
+
+map(boot_samples, ~parLapply(cl, X = ., fun = mean)) %>% 
+  unlist() %>% 
+  as_tibble() %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  theme_minimal(base_size = 16)
+
+stopCluster(cl)
+```
+
+--
+
+```{r eval=FALSE}
+stopCluster(cl)
+```
+
+---
+
+class: inverse, center, middle
+
+# `doMC` and `foreach`
+
+---
+
+## Parallelized `for` loop
+
+Package `doMC` is a parallel backend for the `foreach` package - a package
+that allows you to execute `for` loops in parallel.
+
+```{r}
+library(doMC)
+library(foreach)
+```
+
+Key functions:
+
+- `doMC::registerDoMC()`, set the number of cores for the parallel backend to
+  be used with `foreach`
+  
+- `foreach`, `%dopar%`, `%do%`, parallel loop
+
+<br/><br/><br/>
+
+<i>
+`doMC` serves as an interface between `foreach` and `multicore`. Since 
+`multicore` only works with systems that support forking, these functions
+will not work properly on Windows.
+</i>
+
+---
+
+## Set workers
+
+To get started, set the number of cores with `registerDoMC()`.
+
+```{r}
+# check cores set up
+getDoParWorkers()
+
+# set 4 cores
+registerDoMC(4)
+getDoParWorkers()
+```
+
+---
+
+## Serial and parallel with `foreach()`
+
+.pull-left[
+
+Sequential
+
+.small[
+```{r}
+foreach(i = 1:4) %do% 
+  sort(runif(n = 1e7, max = i))[1]
+```
+]
+
+.small[
+```{r}
+times(2) %do%
+  sort(runif(n = 1e7))[1]
+```
+]
+
+]
+
+.pull-right[
+
+Parallel
+
+.small[
+```{r}
+foreach(i = 1:4) %dopar%
+  sort(runif(n = 1e7, max = i))[1]
+```
+]
+
+.small[
+```{r}
+times(2) %dopar%
+  sort(runif(n = 1e7))[1]
+```
+]
+
+]
+
+---
+
+## Time comparison
+
+.pull-left[
+
+Sequential
+
+.small[
+```{r}
+system.time({
+  foreach(i = 1:4) %do% 
+    sort(runif(n = 1e7, max = i))[1]
+})
+```
+]
+
+.small[
+```{r}
+system.time({
+  for (i in 1:4)
+    sort(runif(n = 1e7, max = i))[1]
+})
+```
+]
+
+]
+
+.pull-right[
+
+Parallel
+
+.small[
+```{r}
+system.time({
+  foreach(i = 1:4) %dopar%
+    sort(runif(n = 1e7, max = i))[1]
+})
+```
+]
+
+]
+
+Even with four cores we don't see a four factor improvement in time.
+
+---
+
+## Iterate over multiple indices
+
+Add more indices separated by commas. Argument `.combine` allows you to format
+the result into something other than the default list.
+
+Equal `i` and `j`
+
+```{r}
+foreach(i = 1:3, j = -2:0, .combine = "c") %dopar% {i ^ j}
+```
+
+--
+
+Longer `j`
+
+```{r}
+foreach(i = 1:3, j = -3:0, .combine = "c") %dopar% {i ^ j}
+```
+
+--
+
+Longer `i`
+
+```{r}
+foreach(i = 1:4, j = 0:1, .combine = "c") %dopar% {i ^ j}
+```
+
+--
+
+Length coercion is not supported. We'll need a nested structure.
+
+---
+
+## Nested `foreach` loops
+
+The `%:%` operator is the nesting operator, used for creating nested `foreach`
+loops.
+
+```{r}
+foreach(i = 1:4, .combine = "c") %:% 
+  foreach(j = 0:1, .combine = "c") %dopar% 
+    {i ^ j}
+```
+
+--
+
+```{r}
+foreach(i = 1:4, .combine = "data.frame") %:% 
+  foreach(j = 0:1, .combine = "c") %dopar% 
+    {i ^ j}
+```
+
+--
+
+```{r}
+foreach(i = 1:4, .combine = "c") %:% 
+  foreach(j = 0:1, .combine = "+") %dopar% 
+    {i ^ j}
+```
+
+---
+
+## Exercise
+
+The 1986 crash of the space shuttle Challenger was linked to failure of 
+O-ring seals in the rocket engines. Data was collected on the 23 previous 
+shuttle missions.
+
+Perform leave-one-out cross validation in parallel fitting a logistic 
+regression model where the response is `damage` / `no_damage`, predictor is 
+`temp`, and data is from `orings` in package `faraway`.
+
+```{r}
+library(tidyverse)
+library(faraway)
+data("orings")
+orings_logistic <- orings %>% 
+  mutate(damage = ifelse(damage > 0, 1, 0))
+```
+
+Compute the average test errors:
+
+$$\mbox{average test error} = \frac{1}{n} \sum_{i = 1}^{n} 1_{(y_i \neq \hat{y}_i^{-i})}$$
+
+???
+
+## Solution
+
+.solution[
+```{r}
+registerDoMC(4)
+foreach(i = 1:dim(orings)[1], .combine = "+") %dopar% {
+  m <- glm(damage ~ temp, family = "binomial", 
+           data = orings_logistic[-i, , drop = FALSE]) 
+  y_hat <- round(predict(m, newdata = orings_logistic[i, , drop = FALSE], 
+                         type = "response"))
+  y <- orings_logistic[i, , drop = FALSE]$damage
+  (abs(y - y_hat)) / dim(orings_logistic)[1]
+}
+```
+]
+
+---
+
+## Exercise hint
+
+Perform leave-one-out cross validation in parallel fitting a logistic 
+regression model where the response is `damage` / `no_damage`, predictor is 
+`temp`, and data is from `orings` in package `faraway`.
+
+.tiny[
+```{r}
+library(tidyverse)
+library(faraway)
+data("orings")
+orings_logistic <- orings %>% 
+  mutate(damage = ifelse(damage > 0, 1, 0))
+```
+]
+
+Compute the average test errors:
+
+$$\mbox{average test error} = \frac{1}{n} \sum_{i = 1}^{n} 1_{(y_i \neq \hat{y}_i^{-i})}$$
+
+Template code:
+
+.tiny[
+```{r eval = FALSE}
+m <- glm(damage ~ temp, family = "binomial", 
+           data = orings_logistic[-i, , drop = FALSE]) 
+y_hat <- round(predict(m, newdata = orings_logistic[i, , drop = FALSE], 
+                       type = "response"))
+y <- orings_logistic[i, , drop = FALSE]$damage
+```
+]
+
+---
+
+## More bootstrap
+
+Create a function that returns $\hat{\beta}_1$.
+
+```{r}
+quiet_glm <- quietly(glm)
+
+get_b1 <- function() {
+  orings_boot <- orings_logistic %>% 
+    sample_n(size = dim(orings_logistic)[1], replace = TRUE)
+  m <- quiet_glm(damage ~ temp, 
+                 family = "binomial", data = orings_boot)
+  b1 <- coef(m$result)["temp"]
+  if (length(m$warnings)) {b1 <- NULL}
+  return(b1)
+}
+```
+
+Generate 10,000 bootstrap samples.
+
+```{r cache=TRUE}
+N <- 10000
+registerDoMC(4)
+b1_boot_sample <- times(N) %dopar% get_b1()
+```
+
+---
+
+.tiny[
+```{r fig.align='center', fig.height=4.5, fig.width=6.5}
+tibble(x = b1_boot_sample) %>% 
+  ggplot(aes(x = x)) +
+  geom_histogram(bins = 30, fill = "blue", color = "grey", alpha = .4) +
+  labs(x = expression(hat(beta)[1])) + theme_bw(base_size = 16)
+```
+]
+
+--
+
+.tiny[
+```{r}
+quantile(b1_boot_sample, c(.025, .975))
+quantile(b1_boot_sample, c(.03, .98))
+```
+]
+
+---
+
+## Time check
+
+In parallel, 4 cores:
+
+```{r cache=TRUE}
+N <- 10000
+registerDoMC(4)
+system.time({b1_boot_sample <- times(N) %dopar% get_b1()})
+```
+
+In parallel, 8 cores:
+
+```{r cache=TRUE}
+registerDoMC(8)
+system.time({b1_boot_sample <- times(N) %dopar% get_b1()})
+```
+
+Sequentially:
+
+```{r cache=TRUE}
+system.time({replicate(N, get_b1())})
+```
+
+---
+
+class: inverse, center, middle
+
+# Profiling
+
+---
+
+## Profiling with `profvis`
+
+We can do more than just time our code. Package `profvis` provides an
+interactive interface to visualize profiling data.
+
+```{r}
+library(profvis)
+```
+
+<br/><br/>
+
+To profile your code
+
+- wrap your R expression inside `profvis()`,
+
+- or use RStudio's GUI under the `Profile` tab.
+
+---
+
+## Exercise
+
+First, profile the below code. Then, try to improve the computation time while 
+keeping the loops and not using parallel computing. Lastly, try an apply variant
+and evaluate the performance.
+
+.tiny[
+```{r eval=FALSE}
+reps <- 10000
+n <- 1000
+
+beta_0 <- 2
+beta_1 <- .5
+beta_2 <- 3
+
+beta_1_hat_all <- c()
+
+for (s in c(1, 3, 7)) {
+  beta_1_hat <- c()
+  for (i in 1:reps) {
+    X <- cbind(rnorm(n), rnorm(n) ^ 2)
+    Y <- beta_0 + beta_1 * X[, 1, drop = FALSE]  + 
+      beta_2 * X[, 2, drop = FALSE] + rnorm(n, sd = s)
+    m <- lm(Y~X)
+    beta_1_hat <- c(beta_1_hat, coefficients(m)[2])
+  }
+  beta_1_hat_all <- c(beta_1_hat_all, beta_1_hat)
+}
+
+beta_df <- tibble(sd         = rep(c(1, 3, 7), each = reps),
+                  beta_1_hat = beta_1_hat_all)
+```
+]
+
+???
+
+## Solution (start)
+
+.solution[
+```{r eval=FALSE}
+reps <- 10000
+n <- 1000
+
+beta_0 <- 2
+beta_1 <- .5
+beta_2 <- 3
+st_dev <- c(1, 3, 7)
+
+beta_1_hat_all <- NULL
+
+for (s in st_dev) {
+  beta_1_hat <- numeric(reps)
+  for (i in 1:reps) {
+    X <- cbind(1, rnorm(n), rnorm(n) ^ 2)
+    Y <- beta_0 + beta_1 * X[, 2, drop = FALSE]  + 
+      beta_2 * X[, 3, drop = FALSE] + rnorm(n, sd = s)
+    beta_1_hat[i] <- (solve(t(X) %*% X) %*% t(X) %*% Y)[2, ]
+  }
+  beta_1_hat_all <- c(beta_1_hat_all, beta_1_hat)
+}
+
+beta_df <- tibble(sd         = rep(c(1, 3, 7), each = reps),
+                  beta_1_hat = beta_1_hat_all)
+```
+]
+
+---
+
+## Save profile
+
+.tiny[
+```{r eval=FALSE}
+library(profvis)
+p <- profvis({reps <- 10000
+n <- 1000
+
+beta_0 <- 2
+beta_1 <- .5
+beta_2 <- 3
+
+beta_1_hat_all <- c()
+
+for (s in c(1, 3, 7)) {
+  beta_1_hat <- c()
+  for (i in 1:reps) {
+    X <- cbind(rnorm(n), rnorm(n) ^ 2)
+    Y <- beta_0 + beta_1 * X[, 1, drop = FALSE]  + 
+      beta_2 * X[, 2, drop = FALSE] + rnorm(n, sd = s)
+    m <- lm(Y~X)
+    beta_1_hat <- c(beta_1_hat, coefficients(m)[2])
+  }
+  beta_1_hat_all <- c(beta_1_hat_all, beta_1_hat)
+}
+
+beta_df <- tibble(sd         = rep(c(1, 3, 7), each = reps),
+                  beta_1_hat = beta_1_hat_all)})
+
+htmlwidgets::saveWidget(p, "profile.html")
+```
+]
+
+<a href="./profile.html">Profiled code</a>
+
+---
+
+## Tips for improving performance
+
+1. Identify bottlenecks in your code - you have to know what code to focus on.
+
+2. Slim down your functions. Use a specific function for a specific problem.
+  - Do you need everything that comes with the output of `lm()`?
+  - Do you only want the p-values from 1,000 tests?
+  
+3. Vectorise
+  - Matrix algebra is a form of vectorization. The loops are executed via 
+    external libraries such as BLAS.
+    
+4. Avoid copies
+  - Be cautious with `c()`, `append()`, `cbind()`, `rbind()`, or `paste()`.
+  - Check how often the garbage collector is running in your profiled code.
+
+---
+
+## References
+
+1. Profvis — Interactive Visualizations for Profiling R Code. (2020). 
+   https://rstudio.github.io/profvis/.
+
+2. Weston, Steve. Getting started with doMC and foreach. (2020).
+   https://cran.r-project.org/web/packages/doMC/vignettes/gettingstartedMC.pdf
+

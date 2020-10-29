@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Parallelization</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Parallelization
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [Multicore Data Science with R and Python](https://blog.dominodatalab.com/multicore-data-science-r-python/)
+- Beyond Single-Core R [slides](https://ljdursi.github.io/beyond-single-core-R/#/) by Jonathan Dursi
+- Getting started with `doMC` and `foreach` [vignette](https://cran.r-project.org/web/packages/doMC/vignettes/gettingstartedMC.pdf) by Steve Weston
+
+---
+
+class: inverse, center, middle
+
+# Timing code
+
+---
+
+## Benchmarking with package `bench`
+
+.tiny[
+
+```r
+library(bench)
+```
+]
+
+.tiny[
+
+```r
+x &lt;- runif(n = 1000000)
+b &lt;- bench::mark(
+  sqrt(x),
+  x ^ 0.5,
+  x ^ (1 / 2),
+  exp(log(x) / 2),
+  time_unit = 's'
+)
+b
+```
+
+```
+#&gt; # A tibble: 4 x 6
+#&gt;   expression        min  median `itr/sec` mem_alloc `gc/sec`
+#&gt;   &lt;bch:expr&gt;      &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt; &lt;bch:byt&gt;    &lt;dbl&gt;
+#&gt; 1 sqrt(x)       0.00213 0.00244     347.     7.63MB    83.6 
+#&gt; 2 x^0.5         0.0166  0.0185       54.1    7.63MB     9.84
+#&gt; 3 x^(1/2)       0.0173  0.0181       54.8    7.63MB     6.85
+#&gt; 4 exp(log(x)/2) 0.0126  0.0137       73.2    7.63MB    11.8
+```
+]
+
+If one of 'ns', 'us', 'ms', 's', 'm', 'h', 'd', 'w' the time units
+are instead expressed as nanoseconds, microseconds, milliseconds,
+seconds, hours, minutes, days or weeks respectively.
+
+---
+
+## Relative performance
+
+
+```r
+class(b)
+```
+
+```
+#&gt; [1] "bench_mark" "tbl_df"     "tbl"        "data.frame"
+```
+
+```r
+summary(b, relative = TRUE)
+```
+
+```
+#&gt; # A tibble: 4 x 6
+#&gt;   expression      min median `itr/sec` mem_alloc `gc/sec`
+#&gt;   &lt;bch:expr&gt;    &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+#&gt; 1 sqrt(x)        1      1         6.41         1    12.2 
+#&gt; 2 x^0.5          7.81   7.59      1            1     1.44
+#&gt; 3 x^(1/2)        8.12   7.41      1.01         1     1   
+#&gt; 4 exp(log(x)/2)  5.91   5.63      1.35         1     1.72
+```
+
+---
+
+## Visualize the performance
+
+
+```r
+plot(b) + theme_minimal()
+```
+
+&lt;img src="lec_21_files/figure-html/unnamed-chunk-5-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+## CPU and real time
+
+.tiny[
+
+```r
+system.time({
+  x &lt;- c()
+  for (i in 1:100000) {
+    x &lt;- c(x, rnorm(1)) + 5
+  }
+})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;  19.039   9.692  28.824
+```
+]
+
+--
+
+.tiny[
+
+```r
+system.time({
+  x &lt;- numeric(length = 100000)
+  for (i in 1:100000) {
+    x[i] &lt;- rnorm(1) + 5
+  }
+})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   0.181   0.032   0.214
+```
+]
+
+--
+
+.tiny[
+
+```r
+system.time({
+  rnorm(100000) + 5
+})
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   0.007   0.000   0.007
+```
+]
+
+---
+
+
+```r
+x &lt;- data.frame(matrix(rnorm(100000), nrow = 1))
+```
+
+
+```r
+bench_time({
+  types &lt;- numeric(dim(x)[2])
+  for (i in seq_along(x)) {
+    types[i] &lt;- typeof(x[i])
+  }
+})
+```
+
+```
+#&gt; process    real 
+#&gt;   6.91s   6.96s
+```
+
+--
+
+
+```r
+bench_time({
+  sapply(x, typeof)
+})
+```
+
+```
+#&gt; process    real 
+#&gt;  97.2ms  97.3ms
+```
+
+--
+
+
+```r
+bench_time({
+  purrr::map_chr(x, typeof)
+})
+```
+
+```
+#&gt; process    real 
+#&gt;   474ms   475ms
+```
+
+---
+
+## Exercises
+
+1. Compare `which("q" ==  sample_letters)[1]` and `match("q", sample_letters)`,
+   where 
+    
+    ```r
+    sample_letters &lt;- sample(c(letters, 0:9), size = 1000, 
+                             replace = TRUE)
+    ```
+   What do these expression do?
+   
+2. Investigate 
+    
+    ```r
+    bench_time(Sys.sleep(3))
+    bench_time(read.csv(str_c("http://www2.stat.duke.edu/~sms185/",
+                              "data/bike/cbs_2013.csv")))
+    ```
+
+???
+
+## Solutions
+
+
+```r
+sample_letters &lt;- sample(c(letters, 0:9), size = 1000, replace = TRUE)
+
+mark(
+  which("q" ==  sample_letters)[1],
+  match("q", sample_letters)
+)
+```
+
+
+---
+
+class: inverse, center, middle
+
+# Parallelization
+
+---
+
+## Code bounds
+
+Your R [substitute a language] computations are typically bounded
+by some combination of the following four factors.
+
+1. CPUs
+
+2. Memory
+
+3. Inputs / Outputs
+
+4. Network
+
+--
+
+Today we'll focus on how our computations (in some instances) can
+be less affected by the first bound.
+
+---
+
+## Terminology
+
+- **CPU**: central processing unit, primary component of a computer
+  that processes instructions
+
+--
+  
+- **Core**: an individual processor within a CPU, more
+  cores will improve performance and efficiency
+    - You can get a Duke VM with 2 cores
+    - Your laptop probably has 2, 4, or 8 cores
+    - DSS R cluster has 16 cores
+    - Duke's computing cluster (DCC) has 15,667 cores
+    
+--
+
+- **User CPU time**: the CPU time spent by the current process,
+  in our case, the R session
+  
+- **System CPU time**: the CPU time spent by the OS on behalf of the
+  current running process
+
+---
+
+## Run in serial or parallel
+
+Suppose I have `\(n\)` tasks, `\(t_1\)`, `\(t_2\)`, `\(\ldots\)`, `\(t_n\)`, that I want to run.
+
+&lt;br/&gt;
+
+To **run in serial** implies that first task `\(t_1\)` is run and  we wait for it to
+complete. Next, task `\(t_2\)` is run. Upon its completion the next task is run,
+and so on, until task `\(t_n\)` is complete. If each task takes `\(s\)` seconds to
+complete, then my theoretical run time is `\(sn\)`.
+
+&lt;br/&gt;
+
+Assume I have `\(n\)` cores. To **run in parallel** means I can divide my `\(n\)` tasks
+among the `\(n\)` cores. For instance, task `\(t_1\)` runs on core 1, task `\(t_2\)` runs
+on core 2, etc. Again, if each task takes `\(s\)` seconds to complete and I have
+`\(n\)` cores, then my theoretical run time is `\(s\)` seconds - this is never the case.
+*Here we assume all `\(n\)` tasks are independent.*
+
+---
+
+## Ways to parallelize
+
+1. Sockets
+&lt;br/&gt;&lt;br/&gt;
+A new version of R is launched on each core.
+    - Available on all systems
+    - Each process on each core is unique
+&lt;br/&gt;&lt;br/&gt;
+2. Forking
+&lt;br/&gt;&lt;br/&gt;
+A copy of the current R session is moved to new cores.
+    - Not available on Windows
+    - Less overhead and easy to implement
+
+---
+
+## Package `parallel`
+
+This package builds on packages `snow` and `multicore`. It can handle much
+larger chunks of computation in parallel.
+
+
+```r
+library(parallel)
+```
+
+
+Core functions:
+
+- `detectCores()`
+
+- `pvec()`, based on forking
+
+- `mclapply()`, based on forking
+
+- `mcparallel()`, `mccollect()`, based on forking
+
+Follow along on our DSS R cluster.
+
+---
+
+## How many cores do I have?
+
+On my MacBook Pro
+
+
+```r
+detectCores()
+```
+
+`#&gt; [1] 8`
+
+&lt;br/&gt;
+
+--
+
+On pawn, rook, knight
+
+
+```r
+detectCores()
+```
+
+`#&gt; [1] 16`
+
+---
+
+## `pvec()`
+
+Using forking, `pvec()` parellelizes the execution of a function on vector 
+elements by splitting the vector and submitting each part to one core.
+
+
+
+```r
+system.time(rnorm(1e7) ^ 4)
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   0.825   0.021   0.846
+```
+
+```r
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 1))
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   0.831   0.017   0.848
+```
+
+```r
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 2))
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   1.527   0.556   1.581
+```
+
+---
+
+
+```r
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 4))
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   1.115   0.296   0.994
+```
+
+```r
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 6))
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   1.116   0.236   0.905
+```
+
+```r
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 8))
+```
+
+```
+#&gt;    user  system elapsed 
+#&gt;   1.181   0.291   0.894
+```
+
+---
+
+&lt;img src="lec_21_files/figure-html/unnamed-chunk-21-1.png" style="display: block; margin: auto;" /&gt;
+
+*Don't underestimate the overhead cost!*
+
+---
+
+## `mclapply()`
+
+Using forking, `mclapply()` is a parallelized version of `lapply()`. Recall
+that `lapply()` returns a list, similar to `map()`.
+
+.small[
+
+```r
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 1)))
+
+#&gt;   user  system elapsed 
+#&gt;  0.058   0.000   0.060 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 2)))
+
+#&gt;   user  system elapsed 
+#&gt;  0.148   0.136   0.106 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 4)))
+
+#&gt;   user  system elapsed 
+#&gt;  0.242   0.061   0.052
+```
+]
+
+---
+
+.small[
+
+```r
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 6)))
+
+#&gt;   user  system elapsed 
+#&gt;  0.113   0.043   0.043 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 8)))
+
+#&gt;   user  system elapsed 
+#&gt;  0.193   0.076   0.040 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 10)))
+
+#&gt;   user  system elapsed 
+#&gt;  0.162   0.083   0.041 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 12)))
+
+#&gt;   user  system elapsed 
+#&gt;  0.098   0.065   0.037 
+```
+]
+
+---
+
+## Another example
+
+
+```r
+delayed_rpois &lt;- function(n) {
+  Sys.sleep(1)
+  rpois(n, lambda = 3)
+}
+```
+
+.tiny[
+
+```r
+bench_time(mclapply(1:8, delayed_rpois, mc.cores = 1))
+```
+
+```
+#&gt; process    real 
+#&gt;  5.57ms   8.03s
+```
+
+```r
+bench_time(mclapply(1:8, delayed_rpois, mc.cores = 4))
+```
+
+```
+#&gt; process    real 
+#&gt;  20.8ms   2.02s
+```
+
+```r
+bench_time(mclapply(1:8, delayed_rpois, mc.cores = 8))
+```
+
+```
+#&gt; process    real 
+#&gt; 13.29ms   1.01s
+```
+
+```r
+# I don't have 800 cores
+bench_time(mclapply(1:8, delayed_rpois, mc.cores = 800))
+```
+
+```
+#&gt; process    real 
+#&gt; 10.62ms   1.01s
+```
+]
+
+---
+
+## `mcparallel()` &amp; `mccollect()`
+
+Using forking, evaluate an R expression asynchronously in a separate process.
+
+.tiny[
+
+```r
+x &lt;- list()
+x$pois &lt;- mcparallel({
+  Sys.sleep(1)
+  rpois(10, 2)
+})
+
+x$norm &lt;- mcparallel({
+  Sys.sleep(2)
+  rnorm(10)
+})
+
+x$beta &lt;- mcparallel({
+  Sys.sleep(3)
+  rbeta(10, 1, 1)
+})
+
+result &lt;- mccollect(x)
+str(result)
+```
+
+```
+#&gt; List of 3
+#&gt;  $ 43765: int [1:10] 2 4 2 2 2 2 3 2 2 4
+#&gt;  $ 43766: num [1:10] -1.151 -1.931 -0.182 -1.222 -1.023 ...
+#&gt;  $ 43767: num [1:10] 0.999 0.539 0.241 0.435 0.101 ...
+```
+]
+
+---
+
+
+```r
+bench_time({
+  x &lt;- list()
+  x$pois &lt;- mcparallel({
+    Sys.sleep(1)
+    rpois(10, 2)
+  })
+  
+  x$norm &lt;- mcparallel({
+    Sys.sleep(2)
+    rnorm(10)
+  })
+  
+  x$beta &lt;- mcparallel({
+    Sys.sleep(3)
+    rbeta(10, 1, 1)
+  })
+  
+  result &lt;- mccollect(x)
+})
+```
+
+```
+#&gt; process    real 
+#&gt;  3.88ms   3.01s
+```
+
+---
+
+## A closer look at  `mcparallel()` &amp; `mccollect()`
+
+
+```r
+str(x)
+```
+
+```
+#&gt; List of 3
+#&gt;  $ pois:List of 2
+#&gt;   ..$ pid: int 43776
+#&gt;   ..$ fd : int [1:2] 4 7
+#&gt;   ..- attr(*, "class")= chr [1:3] "parallelJob" "childProcess" "process"
+#&gt;  $ norm:List of 2
+#&gt;   ..$ pid: int 43777
+#&gt;   ..$ fd : int [1:2] 5 9
+#&gt;   ..- attr(*, "class")= chr [1:3] "parallelJob" "childProcess" "process"
+#&gt;  $ beta:List of 2
+#&gt;   ..$ pid: int 43778
+#&gt;   ..$ fd : int [1:2] 6 11
+#&gt;   ..- attr(*, "class")= chr [1:3] "parallelJob" "childProcess" "process"
+```
+
+---
+
+To check some of your results early set `wait = FALSE` and a timeout time in
+seconds.
+
+
+```r
+p &lt;-  mcparallel({
+  Sys.sleep(1)
+  mean(rnorm(100))
+  })
+
+mccollect(p, wait = FALSE, timeout = 2)
+```
+
+```
+#&gt; $`43780`
+#&gt; [1] 0.1254564
+```
+
+--
+
+However, if you are impatient, you may get a NULL value.
+
+
+```r
+q &lt;-  mcparallel({
+  Sys.sleep(1)
+  mean(rnorm(100))
+  })
+
+mccollect(q, wait = FALSE)
+```
+
+```
+#&gt; NULL
+```
+
+```r
+mccollect(q)
+```
+
+```
+#&gt; $`43789`
+#&gt; [1] 0.06071482
+```
+
+---
+
+## Exercises
+
+`\(1\)`. Do you notice anything strange with objects `result2` and `result4`? 
+   What is going on?
+
+
+```r
+result2 &lt;- mclapply(1:12, FUN = function(x) rnorm(1), 
+                   mc.cores = 2, mc.set.seed = FALSE) %&gt;% unlist()
+result2
+```
+
+```
+#&gt;  [1]  1.4194792  1.4194792 -1.6042415 -1.6042415 -0.8597708 -0.8597708
+#&gt;  [7]  0.9880630  0.9880630 -0.6827594 -0.6827594 -0.8258170 -0.8258170
+```
+
+
+```r
+result4 &lt;- mclapply(1:12, FUN = function(x) rnorm(1), 
+                   mc.cores = 4, mc.set.seed = FALSE) %&gt;% unlist()
+result4
+```
+
+```
+#&gt;  [1]  1.4194792  1.4194792  1.4194792  1.4194792 -1.6042415 -1.6042415
+#&gt;  [7] -1.6042415 -1.6042415 -0.8597708 -0.8597708 -0.8597708 -0.8597708
+```
+
+
+---
+
+`\(2\)`. Parallelize the evaluation of the four expressions below.
+
+
+```r
+mtcars %&gt;% 
+  count(cyl)
+
+mtcars %&gt;% 
+  lm(mpg ~ wt + hp + factor(cyl), data = .)
+
+map_chr(mtcars, typeof)
+
+mtcars %&gt;% 
+  select(mpg, disp:qsec) %&gt;% 
+  map_df(summary)
+```
+
+---
+
+class: inverse, center, middle
+
+# Sockets
+
+---
+
+## Using sockets to parallelize
+
+The basic recipe is as follows:
+
+
+```r
+library(parallel)
+
+detectCores()
+*c1 &lt;- makeCluster()
+result &lt;- clusterApply(cl = c1, ...)
+stopCluster(c1)
+```
+
+&lt;br/&gt;
+
+Here you are spawning new R sessions. Data, packages, functions, etc. need to be
+shipped to the workers.
+
+&lt;br/&gt;
+
+We'll go into more details on using sockets next lecture.
+
+---
+
+## References
+
+1. Beyond Single-Core R. https://ljdursi.github.io/beyond-single-core-R/#/.
+
+2. Jones, M. (2020). Quick Intro to Parallel Computing in R.
+   https://nceas.github.io/oss-lessons/parallel-computing-in-r/parallel-computing-in-r.html.
+   
+3. Parallel (2020). 
+   https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

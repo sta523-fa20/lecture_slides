@@ -1,0 +1,622 @@
+---
+title: "Parallelization"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+library(tidyverse)
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [Multicore Data Science with R and Python](https://blog.dominodatalab.com/multicore-data-science-r-python/)
+- Beyond Single-Core R [slides](https://ljdursi.github.io/beyond-single-core-R/#/) by Jonathan Dursi
+- Getting started with `doMC` and `foreach` [vignette](https://cran.r-project.org/web/packages/doMC/vignettes/gettingstartedMC.pdf) by Steve Weston
+
+---
+
+class: inverse, center, middle
+
+# Timing code
+
+---
+
+## Benchmarking with package `bench`
+
+.tiny[
+```{r}
+library(bench)
+```
+]
+
+.tiny[
+```{r}
+x <- runif(n = 1000000)
+b <- bench::mark(
+  sqrt(x),
+  x ^ 0.5,
+  x ^ (1 / 2),
+  exp(log(x) / 2),
+  time_unit = 's'
+)
+b
+```
+]
+
+If one of 'ns', 'us', 'ms', 's', 'm', 'h', 'd', 'w' the time units
+are instead expressed as nanoseconds, microseconds, milliseconds,
+seconds, hours, minutes, days or weeks respectively.
+
+---
+
+## Relative performance
+
+```{r}
+class(b)
+summary(b, relative = TRUE)
+```
+
+---
+
+## Visualize the performance
+
+```{r fig.width=9, fig.height=6}
+plot(b) + theme_minimal()
+```
+
+---
+
+## CPU and real time
+
+.tiny[
+```{r cache=TRUE}
+system.time({
+  x <- c()
+  for (i in 1:100000) {
+    x <- c(x, rnorm(1)) + 5
+  }
+})
+```
+]
+
+--
+
+.tiny[
+```{r}
+system.time({
+  x <- numeric(length = 100000)
+  for (i in 1:100000) {
+    x[i] <- rnorm(1) + 5
+  }
+})
+```
+]
+
+--
+
+.tiny[
+```{r}
+system.time({
+  rnorm(100000) + 5
+})
+```
+]
+
+---
+
+```{r}
+x <- data.frame(matrix(rnorm(100000), nrow = 1))
+```
+
+```{r cache=TRUE}
+bench_time({
+  types <- numeric(dim(x)[2])
+  for (i in seq_along(x)) {
+    types[i] <- typeof(x[i])
+  }
+})
+```
+
+--
+
+```{r}
+bench_time({
+  sapply(x, typeof)
+})
+```
+
+--
+
+```{r}
+bench_time({
+  purrr::map_chr(x, typeof)
+})
+```
+
+---
+
+## Exercises
+
+1. Compare `which("q" ==  sample_letters)[1]` and `match("q", sample_letters)`,
+   where 
+    ```{r eval=FALSE}
+    sample_letters <- sample(c(letters, 0:9), size = 1000, 
+                             replace = TRUE)
+    ```
+   What do these expression do?
+   
+2. Investigate 
+    ```{r eval=FALSE}
+    bench_time(Sys.sleep(3))
+    bench_time(read.csv(str_c("http://www2.stat.duke.edu/~sms185/",
+                              "data/bike/cbs_2013.csv")))
+    ```
+
+???
+
+## Solutions
+
+```{r eval=FALSE}
+sample_letters <- sample(c(letters, 0:9), size = 1000, replace = TRUE)
+
+mark(
+  which("q" ==  sample_letters)[1],
+  match("q", sample_letters)
+)
+```
+
+
+---
+
+class: inverse, center, middle
+
+# Parallelization
+
+---
+
+## Code bounds
+
+Your R [substitute a language] computations are typically bounded
+by some combination of the following four factors.
+
+1. CPUs
+
+2. Memory
+
+3. Inputs / Outputs
+
+4. Network
+
+--
+
+Today we'll focus on how our computations (in some instances) can
+be less affected by the first bound.
+
+---
+
+## Terminology
+
+- **CPU**: central processing unit, primary component of a computer
+  that processes instructions
+
+--
+  
+- **Core**: an individual processor within a CPU, more
+  cores will improve performance and efficiency
+    - You can get a Duke VM with 2 cores
+    - Your laptop probably has 2, 4, or 8 cores
+    - DSS R cluster has 16 cores
+    - Duke's computing cluster (DCC) has 15,667 cores
+    
+--
+
+- **User CPU time**: the CPU time spent by the current process,
+  in our case, the R session
+  
+- **System CPU time**: the CPU time spent by the OS on behalf of the
+  current running process
+
+---
+
+## Run in serial or parallel
+
+Suppose I have $n$ tasks, $t_1$, $t_2$, $\ldots$, $t_n$, that I want to run.
+
+<br/>
+
+To **run in serial** implies that first task $t_1$ is run and  we wait for it to
+complete. Next, task $t_2$ is run. Upon its completion the next task is run,
+and so on, until task $t_n$ is complete. If each task takes $s$ seconds to
+complete, then my theoretical run time is $sn$.
+
+<br/>
+
+Assume I have $n$ cores. To **run in parallel** means I can divide my $n$ tasks
+among the $n$ cores. For instance, task $t_1$ runs on core 1, task $t_2$ runs
+on core 2, etc. Again, if each task takes $s$ seconds to complete and I have
+$n$ cores, then my theoretical run time is $s$ seconds - this is never the case.
+*Here we assume all $n$ tasks are independent.*
+
+---
+
+## Ways to parallelize
+
+1. Sockets
+<br/><br/>
+A new version of R is launched on each core.
+    - Available on all systems
+    - Each process on each core is unique
+<br/><br/>
+2. Forking
+<br/><br/>
+A copy of the current R session is moved to new cores.
+    - Not available on Windows
+    - Less overhead and easy to implement
+
+---
+
+## Package `parallel`
+
+This package builds on packages `snow` and `multicore`. It can handle much
+larger chunks of computation in parallel.
+
+```{r}
+library(parallel)
+```
+
+
+Core functions:
+
+- `detectCores()`
+
+- `pvec()`, based on forking
+
+- `mclapply()`, based on forking
+
+- `mcparallel()`, `mccollect()`, based on forking
+
+Follow along on our DSS R cluster.
+
+---
+
+## How many cores do I have?
+
+On my MacBook Pro
+
+```{r eval=FALSE}
+detectCores()
+```
+
+`#> [1] 8`
+
+<br/>
+
+--
+
+On pawn, rook, knight
+
+```{r eval=FALSE}
+detectCores()
+```
+
+`#> [1] 16`
+
+---
+
+## `pvec()`
+
+Using forking, `pvec()` parellelizes the execution of a function on vector 
+elements by splitting the vector and submitting each part to one core.
+
+
+```{r cache=TRUE}
+system.time(rnorm(1e7) ^ 4)
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 1))
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 2))
+```
+
+---
+
+```{r cache=TRUE}
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 4))
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 6))
+system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = 8))
+```
+
+---
+
+```{r cache=TRUE, echo=FALSE, fig.align='center', fig.width=11}
+library(tidyverse)
+bench_pvec <- function(reps, cores) {
+  map(1:reps, ~system.time(pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = cores))) %>%
+    do.call(rbind, .) %>% 
+    as_tibble() %>% 
+    map_dbl(median) %>% 
+    .[1:3] %>% 
+    append(cores) %>% 
+    set_names(c("user", "system", "elapsed", "cores"))
+}
+
+core_count <- c(1, 2, 4, 6, 8)
+x <- map(core_count, bench_pvec, reps = 10) %>% 
+  do.call(rbind, .) %>% 
+  as_tibble()
+
+x %>% 
+  gather(key = "time_type", value = "time", -cores) %>% 
+  ggplot(mapping = aes(x = (cores), y = time)) +
+  geom_line(aes(color = time_type), size = 1.5) +
+  geom_point(size = 2) +
+  labs(x = "Number of cores", y = "Time", color = "Computation times",
+        title = "pvec(v = rnorm(1e7), FUN = `^`, 4, mc.cores = *)",
+        caption = "Average of 10 replications") +
+  theme_minimal(base_size = 16)
+```
+
+*Don't underestimate the overhead cost!*
+
+---
+
+## `mclapply()`
+
+Using forking, `mclapply()` is a parallelized version of `lapply()`. Recall
+that `lapply()` returns a list, similar to `map()`.
+
+.small[
+```{r eval=FALSE}
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 1)))
+
+#>   user  system elapsed 
+#>  0.058   0.000   0.060 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 2)))
+
+#>   user  system elapsed 
+#>  0.148   0.136   0.106 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 4)))
+
+#>   user  system elapsed 
+#>  0.242   0.061   0.052
+```
+]
+
+---
+
+.small[
+```{r eval=FALSE}
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 6)))
+
+#>   user  system elapsed 
+#>  0.113   0.043   0.043 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 8)))
+
+#>   user  system elapsed 
+#>  0.193   0.076   0.040 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 10)))
+
+#>   user  system elapsed 
+#>  0.162   0.083   0.041 
+
+system.time(unlist(mclapply(1:10, function(x) rnorm(1e5), mc.cores = 12)))
+
+#>   user  system elapsed 
+#>  0.098   0.065   0.037 
+```
+]
+
+---
+
+## Another example
+
+```{r}
+delayed_rpois <- function(n) {
+  Sys.sleep(1)
+  rpois(n, lambda = 3)
+}
+```
+
+.tiny[
+```{r cache=TRUE}
+bench_time(mclapply(1:8, delayed_rpois, mc.cores = 1))
+bench_time(mclapply(1:8, delayed_rpois, mc.cores = 4))
+bench_time(mclapply(1:8, delayed_rpois, mc.cores = 8))
+# I don't have 800 cores
+bench_time(mclapply(1:8, delayed_rpois, mc.cores = 800))
+```
+]
+
+---
+
+## `mcparallel()` & `mccollect()`
+
+Using forking, evaluate an R expression asynchronously in a separate process.
+
+.tiny[
+```{r}
+x <- list()
+x$pois <- mcparallel({
+  Sys.sleep(1)
+  rpois(10, 2)
+})
+
+x$norm <- mcparallel({
+  Sys.sleep(2)
+  rnorm(10)
+})
+
+x$beta <- mcparallel({
+  Sys.sleep(3)
+  rbeta(10, 1, 1)
+})
+
+result <- mccollect(x)
+str(result)
+```
+]
+
+---
+
+```{r}
+bench_time({
+  x <- list()
+  x$pois <- mcparallel({
+    Sys.sleep(1)
+    rpois(10, 2)
+  })
+  
+  x$norm <- mcparallel({
+    Sys.sleep(2)
+    rnorm(10)
+  })
+  
+  x$beta <- mcparallel({
+    Sys.sleep(3)
+    rbeta(10, 1, 1)
+  })
+  
+  result <- mccollect(x)
+})
+```
+
+---
+
+## A closer look at  `mcparallel()` & `mccollect()`
+
+```{r}
+str(x)
+```
+
+---
+
+To check some of your results early set `wait = FALSE` and a timeout time in
+seconds.
+
+```{r}
+p <-  mcparallel({
+  Sys.sleep(1)
+  mean(rnorm(100))
+  })
+
+mccollect(p, wait = FALSE, timeout = 2)
+```
+
+--
+
+However, if you are impatient, you may get a NULL value.
+
+```{r}
+q <-  mcparallel({
+  Sys.sleep(1)
+  mean(rnorm(100))
+  })
+
+mccollect(q, wait = FALSE)
+mccollect(q)
+```
+
+---
+
+## Exercises
+
+$1$. Do you notice anything strange with objects `result2` and `result4`? 
+   What is going on?
+
+```{r}
+result2 <- mclapply(1:12, FUN = function(x) rnorm(1), 
+                   mc.cores = 2, mc.set.seed = FALSE) %>% unlist()
+result2
+```
+
+```{r}
+result4 <- mclapply(1:12, FUN = function(x) rnorm(1), 
+                   mc.cores = 4, mc.set.seed = FALSE) %>% unlist()
+result4
+```
+
+
+---
+
+$2$. Parallelize the evaluation of the four expressions below.
+
+```{r eval=FALSE}
+mtcars %>% 
+  count(cyl)
+
+mtcars %>% 
+  lm(mpg ~ wt + hp + factor(cyl), data = .)
+
+map_chr(mtcars, typeof)
+
+mtcars %>% 
+  select(mpg, disp:qsec) %>% 
+  map_df(summary)
+```
+
+---
+
+class: inverse, center, middle
+
+# Sockets
+
+---
+
+## Using sockets to parallelize
+
+The basic recipe is as follows:
+
+```{r eval=FALSE}
+library(parallel)
+
+detectCores()
+c1 <- makeCluster() #<<
+result <- clusterApply(cl = c1, ...)
+stopCluster(c1)
+```
+
+<br/>
+
+Here you are spawning new R sessions. Data, packages, functions, etc. need to be
+shipped to the workers.
+
+<br/>
+
+We'll go into more details on using sockets next lecture.
+
+---
+
+## References
+
+1. Beyond Single-Core R. https://ljdursi.github.io/beyond-single-core-R/#/.
+
+2. Jones, M. (2020). Quick Intro to Parallel Computing in R.
+   https://nceas.github.io/oss-lessons/parallel-computing-in-r/parallel-computing-in-r.html.
+   
+3. Parallel (2020). 
+   https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf.
+
+
+
+
