@@ -1,0 +1,657 @@
+---
+title: "Integration: R and Python"
+subtitle: "Programming for Statistical Science"
+author: "Shawn Santo"
+institute: ""
+date: ""
+output:
+  xaringan::moon_reader:
+    css: "slides.css"
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+library(tidyverse)
+```
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- `reticulate` [vignette](https://rstudio.github.io/reticulate/)
+
+---
+
+## Package `reticulate`
+
+.pull-left[
+
+- R and Python are both great languages.
+
+<br/><br/>
+
+- What you can do in one language (for the most part) you can
+  do in the other language
+  
+<br/><br/>
+  
+- Why not leverage the best of Python and R in a 
+  seamless workflow?
+
+]
+
+.pull-right[
+
+![](images/reticulated_python.jpeg)
+
+]
+
+<br/><br/>
+
+--
+
+R package `reticulate` facilitates this seamless integrated workflow.
+
+---
+
+## Setup
+
+You'll need package `reticulate` and Python installed on your machine. Python
+is already installed on `Rook`. To verify RStudio can find Python 
+run `py_discover_config()`.
+
+```{r}
+# For use on Rook
+reticulate::use_python(python = "/usr/bin/python3", required = TRUE)
+library(reticulate)
+```
+
+.tiny[
+```{r}
+py_discover_config()
+```
+]
+
+On your own machine you may need to configure which version of Python to use
+and where that version is located. To do so, use function `use_python()`.
+
+---
+
+## Integrate Python into your R workflow
+
+1. Include Python engine chunks into your R Markdown document. You will have
+   the full set of available chunk options.
+<br/><br/><br/>   
+2. Call (source) Python scripts with `source_python()`. 
+<br/><br/><br/>   
+3. Import Python modules with `import()`. For example, `import("pandas")`
+   imports the `pandas` module into R, provided `pandas` is installed.
+<br/><br/><br/>    
+4. Transform your R console with `repl_python()` so you can interactively
+   run Python code. Type `exit` to return to your R console.
+
+<br/>
+
+*REPL: read - evaluate - print - loop*
+
+---
+
+class: inverse, center, middle
+
+# Mixing Python and R chunks
+
+---
+
+## Python in R Markdown
+
+To insert Python code chunks in R Markdown, click the dropdown arrow on insert
+and select Python. Going forward, I'll place a code comment indicating which
+type of code chunk the given code resides in.
+
+.tiny[
+```{python}
+# python chunk
+message = "Hello from a Python code chunk!"
+print(message)
+```
+]
+
+--
+
+.tiny[
+```{python}
+# python chunk
+colors = ['red', 'white', 'blue', 'green', 'purple']
+colors[1:3]
+```
+
+```{python}
+# python chunk
+colors.sort()
+colors
+```
+
+```{python}
+# python chunk
+type(colors)
+```
+]
+
+---
+
+```{python}
+# python chunk
+x = list(range(1, 10))
+y = list(range(-10, -1))
+
+result = []
+
+for i in range(1, 10):
+  result.append(round(x[i - 1] ** y[i - 1], 4))
+
+print(result)
+```
+
+---
+
+```{python}
+# python chunk
+z = (1, 1, 2, 2, 6, 6, 18, 18)
+t = [1, 1, 2, 2, 6, 6, 18, 18]
+[type(z), type(t)]
+```
+
+--
+
+<br/>
+
+```{python}
+# python chunk
+z *= 2
+z
+```
+
+--
+
+<br/>
+
+```{python}
+# python chunk
+t[0] += 199
+t
+```
+
+---
+
+Let's try and use objects `z` and `t` in an R chunk to take advantage of R's
+vectorization functionality.
+
+```{r error=TRUE}
+# r chunk
+z + t
+```
+
+--
+
+```{r error=TRUE}
+# r chunk
+t
+```
+
+--
+
+<br/><br/>
+
+Objects `z` and `t` in our Python chunks do not exist in our R environment.
+How can we interact with these objects in R?
+
+---
+
+## Calling Python from R
+
+```{python}
+# python chunk
+news = {
+  'title': "Billion-Dollar Art Heist: Thieves" +
+           "Cut Alarms With Fire at Dresden's Green Vault Palace",
+  'author': None,
+  'name': "Google News",
+  'id': "google-news"
+}
+
+type(news)
+```
+
+--
+
+```{python}
+# python chunk
+news
+```
+
+--
+
+Python code is executed by default in the main module. You can then access any 
+objects created using the `py` object exported by reticulate.
+
+---
+
+```{r}
+# r chunk
+py$news
+```
+
+--
+
+Object `py$news` is an R list. Package reticulate translated the Python 
+dictionary to an R list object.
+
+--
+
+```{r}
+# r chunk
+py$news[["title"]]
+```
+
+---
+
+```{r}
+# r chunk
+py$news$name
+```
+
+--
+
+<br/>
+
+```{r}
+# r chunk
+news_header <- py$news[1:2]
+news_header
+```
+
+<br/><br/>
+
+Use `py$_<obj_name>` to work with a Python object in an R chunk.
+
+---
+
+## Another example
+
+```{python}
+# python chunk
+nums = [1, 2, 3, 4, 5]
+stuff = [4, 1.0, "cat", "dog", [3, 2, 1, 0], (2, 3)]
+```
+
+--
+
+What types of objects will `nums` and `stuff` be in R?
+
+--
+
+```{r}
+# r chunk
+str(py$nums)
+```
+
+```{r}
+# r chunk
+str(py$stuff)
+```
+
+---
+
+## Type conversions
+
+.small-text[
+|            R           |       Python      |                    Examples                     |
+|:-----------------------|:------------------|:------------------------------------------------|
+| Single-element vector  | Scalar            | `1`, `1L`, `TRUE`, `"abcde"`                    |
+| Multi-element vector   | List              | `c(1.0, 2.0, 3.0)`, `c(1L, 2L, 3L)`             |
+| List of multiple types | Tuple             | `list(1L, TRUE, "foo")`, `tuple(3, 4, 5)`       |
+| Named list             | Dictionary        | `list(a = 1L, b = 2.0), dict(x = x_data)`       |
+| Matrix/Array           | NumPy ndarray     | `matrix(c(1,2,3,4), nrow = 2, ncol = 2)`        |
+| Data Frame             | Pandas DataFrame  | `data.frame(x = c(1,2,3), y = c("a", "b", "c"))`|
+| Function               | Python function   | `function(x) x + 1`                             |
+| NULL, TRUE, FALSE      | None, True, False | `NULL`, `TRUE`, `FALSE`                         |
+]
+
+---
+
+## Calling R from Python
+
+We can easily go the other way in terms of object conversion: R objects that we
+want to use in a Python code chunk.
+
+```{r}
+# r chunk
+mtcars_small <- mtcars %>% 
+  select(mpg, cyl, wt) %>% 
+  sample_n(4)
+```
+
+--
+
+```{python}
+# python chunk
+import pandas
+r.mtcars_small.mean()
+```
+
+<br/>
+
+Use `r._<obj_name>` to work with an R object in a Python chunk.
+
+---
+
+## Exercises
+
+1. Use Python to read in data from the Montgomery County of Maryland Adoption
+   center - https://data.montgomerycountymd.gov/api/views/e54u-qx42/rows.csv?accessType=DOWNLOAD.
+   In a Python code chunk, clean up the variable names so they are all lowercase
+   and every space is replaced with a `_`. Subset the data frame so it only
+   contains columns `'animal_id':'sex'`; save it as a data frame object
+   named `pets`. <br/><br/>
+   In an R chunk, get the counts for each breed. Create a bar plot that shows the
+   counts of the animal breeds where there are at least 4 adoptable pets of said
+   breed. Color the bars according to the animal's type.
+
+2. Diagnose the error in the below set of code.
+.tiny[
+```{r}
+# r chunk
+x <- seq(1, 11, by = 2)
+```
+
+```{python error=TRUE}
+# python chunk
+y = list(range(-20, 21))
+y[r.x[5]]
+```
+]
+
+???
+
+## Solution
+
+.solution[
+```{python eval=FALSE}
+# python chunk
+import pandas as pd
+pets = pd.read_csv("https://data.montgomerycountymd.gov/api/views/e54u-qx42/rows.csv?accessType=DOWNLOAD")
+pets.columns = pets.columns.str.lower().str.replace(' ', '_')
+pets = pets.loc[:, 'animal_id':'sex']
+```
+
+```{r eval=FALSE}
+# r chunk
+py$pets %>% 
+  group_by(animal_type, breed) %>% 
+  summarise(count = n()) %>% 
+  filter(count > 3) %>% 
+  arrange(desc(count)) %>% 
+  ggplot(aes(x = reorder(breed, -count), y = count, fill = animal_type)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(x = "Breed", y = "Count", fill = "Animal type",
+       title = "Montgomery County of Maryland Adoptable Pets") +
+  theme_bw()
+```
+
+There is a type mismatch. Object `x` is of type double. List indices must be
+subset with integers.
+
+]
+
+---
+
+## Exercise 1 hints
+
+Python code chunk starter code:
+
+```{python}
+# python chunk
+import pandas as pd
+pets = pd.read_csv("https://data.montgomerycountymd.gov/api/views/e54u-qx42/rows.csv?accessType=DOWNLOAD")
+```
+
+See also `columns`, `str.replace()`, and `str.lower()`.
+
+Consult https://pandas.pydata.org/pandas-docs/stable/getting_started/comparison/comparison_with_r.html
+for the translation from R to Python with regards to `dplyr` and `pandas`.
+
+---
+
+
+## Cautious integration
+
+In general, you need to know the rules of the less flexible language with
+regards to code integration.
+
+Common gotchas:
+
+- 1 in R is not 1 in Python with regards to the type
+
+- R has 1-based indices, Python has 0-based indices
+
+- Python list indices must be integers
+
+For certain circumstances you may need to force conversion of R types
+to Python types. R functions `dict()` and `tuple()` allow manual conversion to
+Python dictionaries and tuples, respectively.
+
+---
+
+## Exercise
+
+Investigate the conversion from Python to R for a Python Set. How about for
+an object of class `range` in Python?
+
+```{python}
+# python chunk
+x = range(1, 5)
+s = {1, 1, 3, 4, 5, 5, 10, 10}
+```
+   
+???
+
+## Solution
+
+.solution[
+```{python eval=FALSE}
+# python chunk
+x = range(1, 5)
+s = {1, 1, 3, 4, 5, 5, 10, 10}
+print(x)
+print(s)
+```
+
+```{r eval=FALSE}
+# r chunk
+py$x
+class(py$x)
+py$s
+class(py$s)
+```
+
+If a Python object of a custom class is returned, then an R reference to that
+object is returned. You can call methods and access properties of the object.
+
+]
+
+---
+
+class: inverse, center, middle
+
+# Sourcing Python scripts
+
+---
+
+## Read and evaluate a Python script
+
+Consider the simple Python script
+
+```{python eval=FALSE}
+def add(x, y):
+  return x + y
+```
+
+I'll save this as `add.py` in a directory named `python_scripts`. To read and 
+evaluate this in R, use `source_python()`.
+
+```{r}
+# r chunk
+source_python("python_scripts/add.py")
+```
+
+--
+
+<br/><br/>
+
+**What do you notice about your R environment?**
+
+---
+
+```{r}
+# r chunk
+add(x = 1, y = 0)
+```
+
+--
+
+```{r}
+# r chunk
+add(x = "Package reticulate is ", y = "great!")
+```
+
+--
+
+```{r}
+# r chunk
+z <- c(4, 5)
+add(z[1], z[2])
+```
+
+--
+
+```{r}
+# r chunk
+add(c(1, 2, 3), c(-3, -2, -1))
+```
+
+---
+
+## Another example
+
+Consider this Python script that returns a specific form of a matrix.
+
+```{python eval=FALSE}
+def mat_design(rows, cols, design = "I"):
+   
+    import numpy as np
+
+    if design == "I":
+        mat = np.eye(max(rows,cols))
+    elif design == "zeros":
+        mat = np.zeros((rows, cols))
+    elif design == "ones":
+        mat = np.ones((rows, cols))
+    else:
+        mat = "Invalid design"
+
+    return mat
+```
+
+Use `source_python()` to bring it to your R environment.
+
+```{r}
+# r chunk
+source_python("python_scripts/mat_design.py")
+```
+
+---
+
+```{r error=TRUE}
+# r chunk
+mat_design(3, 3, design = "I")
+```
+
+What happened?
+
+<br/>
+
+--
+
+```{r}
+# r chunk
+mat_design(3L, 5L, design = "I")
+```
+
+
+---
+
+```{r}
+# r chunk
+mat_design(2L, 3L, design = "ones")
+```
+
+--
+
+<br/><br/>
+
+```{r}
+# r chunk
+mat_design(2L, 3L, design = "zeros")
+```
+
+--
+
+<br/><br/>
+
+```{r}
+# r chunk
+mat_design(1000L, 1000L, design = "sparse")
+```
+
+---
+
+class: inverse, center, middle
+
+# Integration beyond R and Python
+
+---
+
+## R and other languages
+
+- R and C++, `rcpp`, http://www.rcpp.org/
+
+- R and MatLab, `R.matlab`, https://cran.r-project.org/web/packages/R.matlab/R.matlab.pdf
+
+- R and Julia, `JuliaCall`, https://non-contradiction.github.io/JuliaCall/
+
+- R and Java, `rJava`, http://www.rforge.net/rJava/
+
+<br/><br/>
+
+The [Thesaurus of Mathematical Languages](http://mathesaurus.sourceforge.net/) 
+is a useful resource to consult as you integrate other languages with R.
+
+---
+
+## References
+
+1. Interface to Python. (2020). https://rstudio.github.io/reticulate/.
+
+2. Mathesaurus. (2020). http://mathesaurus.sourceforge.net/.

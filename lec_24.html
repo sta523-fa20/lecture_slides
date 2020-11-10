@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Spark &amp; sparklyr part II</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Shawn Santo" />
+    <link rel="stylesheet" href="slides.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Spark &amp; sparklyr part II
+## Programming for Statistical Science
+### Shawn Santo
+
+---
+
+
+
+
+## Supplementary materials
+
+Full video lecture available in Zoom Cloud Recordings
+
+Additional resources
+
+- [`sparklyr`: R interface for Apache Spark](https://spark.rstudio.com/)
+- [R Front End for Apache Spark](http://spark.apache.org/docs/latest/api/R/index.html)
+- [Mastering Spark with R](https://therinspark.com)
+
+---
+
+class: inverse, center, middle
+
+# Recall
+
+---
+
+## The Spark ecosystem
+
+![](images/spark_ecosystem.png)
+
+---
+
+## What is `sparklyr`?
+
+Package `sparklyr` provides an R interface for Spark. It works with any version
+of Spark.
+
+- Use `dplyr` to translate R code into Spark SQL
+
+- Work with Spark's MLlib
+
+- Interact with a stream of data
+
+&lt;center&gt;
+&lt;img src="images/spark_ecosystem.png" height=200 width=400&gt;
+&lt;/center&gt;
+
+--
+
+The interface between R and Spark is young. If you know Scala, a great project
+would be to contribute to this R and Spark interaction by making Spark libraries
+available as an R package.
+
+---
+
+## Workflow
+
+&lt;center&gt;
+&lt;img src="images/push_compute_collect.png" height=300 width=700&gt;
+&lt;img src="images/ml_regression_r_to_scala.png"&gt;
+&lt;/center&gt;
+
+*Source*: https://therinspark.com/
+
+---
+
+class: inverse, center, middle
+
+# Preliminaries
+
+---
+
+## Configure and connect
+
+
+```r
+library(sparklyr)
+library(tidyverse)
+library(future)
+# add some custom configurations
+conf &lt;- list(
+  sparklyr.cores.local = 4,
+  `sparklyr.shell.driver-memory` = "16G",
+  spark.memory.fraction = 0.5
+)
+```
+
+`sparklyr.cores.local` - defaults to using all of the available cores
+
+`sparklyr.shell.driver-memory` - limit is the amount of RAM available in the 
+computer minus what would be needed for OS operations
+
+`spark.memory.fraction` - default is set to 60% of the requested memory 
+per executor
+
+
+```r
+# create a spark connection
+sc &lt;- spark_connect(master = "local", version = "3.0", config = conf)
+```
+
+---
+
+class: inverse, center, middle
+
+# Spark Streaming
+
+---
+
+## What is Spark Streaming?
+
+&gt;"Spark Streaming makes it easy to build scalable fault-tolerant streaming
+  applications."
+  
+Streaming data:
+
+- Financial asset prices (stocks, futures, cryptocurrency, etc.)
+- Twitter feed
+- Purchase orders on Amazon
+
+Think of streaming data as real-time data. Streams are most relevant when we
+want to process and analyze this data in real time.
+
+---
+
+## The role of `sparklyr`
+
+`sparklyr` provides an R interface for interacting with Spark Streaming by 
+allowing you to
+
+- run `dplyr`, SQL, and pipeline machine learning models against a stream of
+  data;
+  
+- read in many file formats (CSV, text, JSON, parquet, etc.) from a stream 
+  source;
+  
+- write stream results in the file formats specified above;
+
+- integration with Shiny that allows you to get the contents of a stream in
+  your app.
+
+---
+
+## Spark Streaming process
+
+Streams in Spark follow a **source** (think reading), **transformation**, and
+**sink** (think writing) process.
+
+--
+
+**Source:**
+
+There exists a set of `stream_read_*()` functions in `sparklyr` for reading
+the specified file type in as a Spark DataFrame stream.
+
+--
+
+**Transformation:**
+
+Spark (via `sparklyr`) can then perform data wrangling, manipulations, and joins
+with other streaming or static data, machine learning pipeline predictions, and 
+other R manipulations.
+
+--
+
+**Sink:**
+
+There exists a set of `stream_write_*()` functions in `sparklyr` for writing
+a Spark DataFrame stream as the specified file type.
+
+---
+
+## Toy example
+
+Let's leave out the transformation step and simply define a streaming process
+that reads files from a folder `input_source/` and immediately writes them to a
+folder `output_source/`.
+
+
+```r
+dir.create("input_source/")
+dir.create("output_source/")
+stream &lt;- stream_read_text(sc, path = "input_source/") %&gt;%
+  stream_write_text(path = "output_source/")
+```
+
+--
+
+Generate 100 test files to see that they are being read and written to and 
+from the correct directories. Function `stream_view()` launches a Shiny gadget 
+to visualize the given stream. You can see the rows per second (rps) being 
+read and written.
+
+
+```r
+stream_generate_test(interval = .2, iterations = 100, 
+                            path = "input_source/")
+stream_view(stream)
+```
+
+--
+
+Stop the stream and remove the `input_source/` and `output_source/` directories.
+
+
+```r
+stream_stop(stream)
+unlink("input_source/", recursive = TRUE)
+unlink("output_source/", recursive = TRUE)
+```
+
+---
+
+## Stream viewer
+
+&lt;center&gt;
+&lt;img src="images/stream_view.png"&gt;
+&lt;/center&gt;
+
+---
+
+## Toy example details
+
+
+```r
+stream &lt;- stream_read_text(sc, path = "input_source/") %&gt;%
+* stream_write_text(path = "output_source/")
+```
+
+The output writer is what starts the streaming job. It will start monitoring 
+the input folder, and then write the new results in the `output_source/` folder.
+
+--
+
+&lt;br/&gt;
+
+The stream query defaults to micro-batches running every 5 seconds. This
+can be adjusted with `stream_trigger_interval()` and 
+`stream_trigger_continuous()`. 
+
+---
+
+## Example with transformations
+
+Using the tibble `diamonds` from `ggplot2`, let's create a stream, do some
+aggregation, and output the process to memory as a Spark DataFrame. Using Spark 
+memory as the target will allow for aggregation to happen during processing.
+*On all but Kafka, aggregation is not allowed for any file output.*
+
+
+```r
+dir.create("input_source/")
+stream_generate_test(df = diamonds, path = "input_source/", 
+                     iterations = 1)
+```
+
+
+```r
+stream &lt;- stream_read_csv(sc, path = "input_source/") %&gt;% 
+  select(price) %&gt;% 
+  stream_watermark() %&gt;%   # add a timestamp
+  group_by(timestamp) %&gt;%  # do a grouping by the timestamp
+    summarise(
+      min_price  = min(price, na.rm = TRUE),
+      max_price  = max(price, na.rm = TRUE),
+      mean_price = mean(price, na.rm = TRUE),
+      count      = n()
+  ) %&gt;%
+  stream_write_memory(name = "diamonds_sdf")
+```
+
+Object `diamonds_sdf` will be a Spark DataFrame to which our summarized
+streaming computations are written.
+
+---
+
+## Example with transformations
+
+Generate some test data using `diamonds`.
+
+
+```r
+stream_generate_test(df = diamonds, path = "input_source/", iterations = 10)
+```
+
+&lt;br/&gt;
+
+We can periodically check the results.
+
+
+```r
+tbl(sc, "diamonds_sdf")
+```
+
+--
+
+&lt;br/&gt;
+
+Stop the stream and remove the `input_source/` and `output_source/` directories.
+
+
+```r
+stream_stop(stream)
+unlink("input_source/", recursive = TRUE)
+```
+
+---
+
+## Shiny and streaming
+
+Shiny’s reactive framework is well suited to support streaming information, 
+which you can use to display real-time data from Spark using `reactiveSpark()`.
+It can take a Spark DataFrame (or an object coercable to one), and it
+returns a reactive data source. You can use it similar to how you used
+reactive tibble objects.
+
+--
+
+&lt;br/&gt;
+
+To demonstrate the functionality of `reactiveSpark()`, we'll again use the
+NYC yellow taxi trip data from January 2009.
+
+https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+
+
+```r
+taxi_path &lt;- str_c("/home/fac/sms185/.public_html/data/taxi/",
+                   "yellow_tripdata_2009-01.csv")
+
+taxi_tbl &lt;- spark_read_csv(sc, name = "yellow_taxi_2009", 
+                           path = taxi_path)
+```
+
+---
+
+## Data preview
+
+.small[
+
+```r
+glimpse(taxi_tbl)
+```
+
+
+```r
+*Rows: ??
+Columns: 18
+*Database: spark_connection
+$ vendor_name           &lt;chr&gt; "VTS", "VTS", "VTS", "DDS", "DDS", "DDS", "DDS", "V…
+$ Trip_Pickup_DateTime  &lt;dttm&gt; 2009-01-04 02:52:00, 2009-01-04 03:31:00, 2009-01-…
+$ Trip_Dropoff_DateTime &lt;dttm&gt; 2009-01-04 03:02:00, 2009-01-04 03:38:00, 2009-01-…
+$ Passenger_Count       &lt;int&gt; 1, 3, 5, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, …
+$ Trip_Distance         &lt;dbl&gt; 2.63, 4.55, 10.35, 5.00, 0.40, 1.20, 0.40, 1.72, 1.…
+$ Start_Lon             &lt;dbl&gt; -73.99196, -73.98210, -74.00259, -73.97427, -74.001…
+$ Start_Lat             &lt;dbl&gt; 40.72157, 40.73629, 40.73975, 40.79095, 40.71938, 4…
+$ Rate_Code             &lt;chr&gt; "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA…
+$ store_and_forward     &lt;chr&gt; "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA…
+$ End_Lon               &lt;dbl&gt; -73.99380, -73.95585, -73.86998, -73.99656, -74.008…
+$ End_Lat               &lt;dbl&gt; 40.69592, 40.76803, 40.77023, 40.73185, 40.72035, 4…
+$ Payment_Type          &lt;chr&gt; "CASH", "Credit", "Credit", "CREDIT", "CASH", "CASH…
+$ Fare_Amt              &lt;dbl&gt; 8.9, 12.1, 23.7, 14.9, 3.7, 6.1, 5.7, 6.1, 8.7, 5.9…
+$ surcharge             &lt;dbl&gt; 0.5, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 0…
+$ mta_tax               &lt;chr&gt; "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA…
+$ Tip_Amt               &lt;dbl&gt; 0.00, 2.00, 4.74, 3.05, 0.00, 0.00, 1.00, 0.00, 1.3…
+$ Tolls_Amt             &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Total_Amt             &lt;dbl&gt; 9.40, 14.60, 28.44, 18.45, 3.70, 6.60, 6.70, 6.60, …
+```
+]
+
+---
+
+## Sample Taxi data
+
+Define a bounding box for NYC.
+
+
+```r
+min_lat &lt;- 40.5774
+max_lat &lt;- 40.9176
+min_lon &lt;- -74.15
+max_lon &lt;- -73.7004
+```
+
+--
+
+&lt;br/&gt;
+
+Take a sample of about 10% of the trips, where the trip start is within our
+bounding box defined above.
+
+
+```r
+taxi &lt;- taxi_tbl %&gt;% 
+  sample_frac(size = 0.1) %&gt;% 
+  collect() %&gt;% 
+  janitor::clean_names() %&gt;% 
+  filter(start_lon &gt;= min_lon, start_lon &lt;= max_lon, 
+         start_lat &gt;= min_lat, start_lat &lt;= max_lat)
+```
+
+---
+
+## Streaming Shiny gadget
+
+
+```r
+library(shiny)
+```
+
+
+```r
+unlink("shiny-stream", recursive = TRUE)
+dir.create("shiny-stream", showWarnings = FALSE)
+```
+
+--
+
+To generate test data, we'll do this with our own code.
+
+
+```r
+library(tidyverse)
+write_stream_csv &lt;- function(x, row, path = "shiny-stream/", pause = 2) {
+  x %&gt;% 
+    slice(row) %&gt;% 
+    write_csv(file = str_c(path, "stream_", row, ".csv"))
+  Sys.sleep(pause)
+}
+
+trips &lt;- sample(1:nrow(taxi))
+walk(trips, write_stream_csv, x = taxi)
+```
+
+Run this as a local background job from a script file. This way you can
+launch the Shiny App (on the next slide) in RStudio.
+
+---
+
+## Streaming Shiny gadget
+
+Once the local job starts running, launch the app to see how the plot updates
+as we simulate more taxi trips beginning.
+
+
+```r
+ui &lt;- function() {
+  plotOutput("taxi_plot")
+}
+
+server &lt;- function(input, output, session) {
+  taxi_stream &lt;- stream_read_csv(sc, path = "shiny-stream") %&gt;%
+*   reactiveSpark()
+
+  output$taxi_plot &lt;- renderPlot({
+    ggplot(taxi_stream(), aes(y = start_lat, x = start_lon)) +
+      geom_point(alpha = 0.3) +
+      labs(y = "Latitude", x = "Longitude") +
+      theme_bw(base_size = 16)
+  })
+}
+
+runGadget(ui, server)
+```
+
+---
+
+## References
+
+1. A Gentle Introduction to Apache Spark. (2020). 
+   http://www.dcs.bbk.ac.uk/~dell/teaching/cc/book/databricks/spark-intro.pdf.
+   
+2. Javier Luraschi, E. (2020). Mastering Spark with R. https://therinspark.com/.
+
+3. R Front End for Apache Spark. (2020). 
+   http://spark.apache.org/docs/latest/api/R/index.html.
+
+4. sparklyr. (2020). https://spark.rstudio.com/.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

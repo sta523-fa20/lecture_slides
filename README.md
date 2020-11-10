@@ -27,7 +27,7 @@ images and the CSS file for reproducibility.
 |         | Fri, Oct 23 | Working with big data                  |  :white_check_mark:     |
 | Week 11 | Wed, Oct 28 | Parallelization                        |  :white_check_mark:     |
 |         | Fri, Oct 30 | More parallelization and profiling     |  :white_check_mark:     |
-| Week 12 | Wed, Nov 04 | Spark & sparklyr part I                |                         |
-|         | Fri, Nov 06 | Spark & sparklyr part II               |                         |
-| Week 13 | Wed, Nov 11 | Special topic                          |                         |
+| Week 12 | Wed, Nov 04 | Spark & sparklyr part I                |  :white_check_mark:     |
+|         | Fri, Nov 06 | Spark & sparklyr part II               |  :white_check_mark:     |
+| Week 13 | Wed, Nov 11 | Special topic                          |  :white_check_mark:     |
 |         | Fri, Nov 13 | Special topic                          |                         |
